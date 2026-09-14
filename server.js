@@ -79,13 +79,25 @@ async function main() {
         res.status(400).json({ error: err.message });
     });
 
-    // Bind to 0.0.0.0, not localhost, so the display screen can be reached
-    // from a TV/other device on the club's wifi from day one.
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log(`Game Scheduler API listening on port ${PORT}`);
+    // This computer only (127.0.0.1) unless the club has turned on network
+    // access in Settings > Club details > Game defaults. Listening on every
+    // interface is what makes Windows pop its "allow Node.js JavaScript
+    // Runtime through the firewall" security alert the first time the app
+    // runs - alarming on a club computer, and unnecessary unless the
+    // External Display is going to be opened on another device. Read once
+    // here; changing the setting takes effect at the next start.
+    const club = store.queryOne('SELECT allow_network_access FROM club_settings WHERE id = 1');
+    const allowNetwork = process.env.GAME_SCHEDULER_HOST ? process.env.GAME_SCHEDULER_HOST !== '127.0.0.1' : !!(club && club.allow_network_access);
+    const host = process.env.GAME_SCHEDULER_HOST || (allowNetwork ? '0.0.0.0' : '127.0.0.1');
+    app.listen(PORT, host, () => {
+        console.log(`Game Scheduler API listening on ${host}:${PORT}`);
         console.log(`  Local:   http://localhost:${PORT}`);
-        for (const addr of localNetworkAddresses()) {
-            console.log(`  Network: http://${addr}:${PORT}`);
+        if (allowNetwork) {
+            for (const addr of localNetworkAddresses()) {
+                console.log(`  Network: http://${addr}:${PORT}`);
+            }
+        } else {
+            console.log('  Network: off (Settings > Club details > Game defaults to allow other devices)');
         }
     });
 

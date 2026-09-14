@@ -125,6 +125,7 @@ async function loadSettings() {
     $('#cs-break').value = s.default_break_minutes;
     $('#cs-square').checked = !!s.square_enabled;
     $('#cs-gender-aware').checked = !!s.gender_aware_pairing;
+    $('#cs-network').checked = !!s.allow_network_access;
     $('#icon-preview').src = `/api/branding/icon?v=${s.club_icon_ver || 0}`;
     $('#email-provider').value = s.email_provider || 'smtp2go';
     $('#email-smtp2go-api-key').value = s.smtp2go_api_key || '';
@@ -166,6 +167,7 @@ $('#cs-defaults-save').addEventListener('click', () => saveClubFields({
     default_break_minutes: Number($('#cs-break').value),
     square_enabled: $('#cs-square').checked,
     gender_aware_pairing: $('#cs-gender-aware').checked,
+    allow_network_access: $('#cs-network').checked,
 }, '#cs-defaults-saved'));
 
 // --- Club icon (favicon, header logo, desktop shortcut icon) ---

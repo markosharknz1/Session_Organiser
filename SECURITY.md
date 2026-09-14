@@ -25,10 +25,13 @@ traffic is **sending the end-of-night summary email**, only when you click
 *Send*, to whichever provider you configured in Settings (SMTP2Go, Mailgun, or
 Gmail). Nothing is ever sent automatically.
 
-The server the app starts listens on port 4000. It binds to all interfaces so a
-second screen on the same network (the External Display on a TV) can reach it,
-but it has no authentication - it is meant for a club's own private network,
-not the public internet.
+The server the app starts listens on port 4000 **on the computer itself only**
+(127.0.0.1) unless you turn on *Allow other devices on this network* in
+Settings > Club details > Game defaults - for opening the External Display on
+another device, such as a TV on the club wifi. Only then does Windows ask
+whether to let "Node.js JavaScript Runtime" through the firewall. The server
+has no authentication, so keep that to a club's own private network, never
+the public internet.
 
 ## What's in the download, and what runs
 

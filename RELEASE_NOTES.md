@@ -19,6 +19,7 @@ If you skipped step 2 and Windows says **"Windows protected your PC"**: click *M
 - **The official Node.js runtime is in the ZIP** (`node\node.exe`, signed by the OpenJS Foundation; the release workflow downloads it from nodejs.org and checks it against nodejs.org's published checksums - see the *Verify this download* section below). Setup no longer needs winget, an internet connection, or admin rights.
 - **The setup screen is a page in the app window** (Edge or Chrome) instead of a PowerShell window - install location, desktop-shortcut tickbox, and progress as it goes. The desktop shortcut is written by the app itself rather than by a script.
 - Setup **removes the "downloaded from the internet" mark** from the installed files, so the installed copy never triggers Windows' download warnings again.
+- **No more Windows Firewall alert.** The server now listens on the computer itself only, so Windows no longer asks whether to let "Node.js JavaScript Runtime" through the firewall when the app starts. A club that opens the External Display on another device (a TV on the wifi) turns on *Allow other devices on this network* in Settings > Club details > Game defaults - then Windows asks once, and you click Allow.
 - Edge's "we're now syncing your browsing data" prompt no longer appears over the app on a PC signed in with a Microsoft account.
 - Everything from v1.0.12 is unchanged: singles sessions, the Settings menu, one-round-at-a-time Rounds view, "Games played today", history filters and trends, the CSV import template.
 

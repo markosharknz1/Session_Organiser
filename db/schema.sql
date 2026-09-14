@@ -196,6 +196,11 @@ CREATE TABLE IF NOT EXISTS club_settings (
     -- still stored/sent over the API as plain YYYY-MM-DD regardless. Native
     -- <input type="date"> pickers are a browser/OS thing this can't touch.
     date_format TEXT NOT NULL DEFAULT 'YMD' CHECK (date_format IN ('DMY','MDY','YMD')),
+    -- Off: the server listens on this computer only (127.0.0.1), so Windows
+    -- never asks to let Node.js through the firewall. On: it listens on the
+    -- club's network too, so the External Display can be opened on another
+    -- device (a TV on the wifi). Read once, at server start - see server.js.
+    allow_network_access INTEGER NOT NULL DEFAULT 0 CHECK (allow_network_access IN (0,1)),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

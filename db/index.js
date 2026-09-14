@@ -240,6 +240,13 @@ function ensureColumns(db) {
         // Display-only preference (DMY/MDY/YMD) - see public/dateFormat.js.
         db.run(`ALTER TABLE club_settings ADD COLUMN date_format TEXT NOT NULL DEFAULT 'YMD' CHECK (date_format IN ('DMY','MDY','YMD'))`);
     }
+    if (!clubSettingsCols.includes('allow_network_access')) {
+        // Off by default: the server binds to 127.0.0.1 and Windows never
+        // shows its "allow Node.js through the firewall" prompt. Clubs that
+        // open the External Display on another device turn it on (Settings
+        // > Club details > Game defaults); takes effect at the next start.
+        db.run(`ALTER TABLE club_settings ADD COLUMN allow_network_access INTEGER NOT NULL DEFAULT 0 CHECK (allow_network_access IN (0,1))`);
+    }
 
     const templateCols = all(db, `PRAGMA table_info(session_templates)`).map((c) => c.name);
     for (const col of ['default_game_minutes', 'default_break_minutes']) {

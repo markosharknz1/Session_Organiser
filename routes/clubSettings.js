@@ -29,7 +29,7 @@ router.put('/', (req, res) => {
              mailgun_api_key=?, mailgun_domain=?, mailgun_sender_email=?, mailgun_sender_name=?,
              gmail_user=?, gmail_app_password=?,
              summary_recipient_emails=?, square_access_token=?, square_location_id=?,
-             gender_aware_pairing=?, date_format=?, updated_at=datetime('now')
+             gender_aware_pairing=?, date_format=?, allow_network_access=?, updated_at=datetime('now')
              WHERE id=1`,
             [merged.club_name, merged.default_game_minutes, merged.default_break_minutes, merged.max_capacity,
                 merged.square_enabled ? 1 : 0,
@@ -39,7 +39,7 @@ router.put('/', (req, res) => {
                 merged.gmail_user || null, merged.gmail_app_password || null,
                 merged.summary_recipient_emails || null,
                 merged.square_access_token || null, merged.square_location_id || null,
-                merged.gender_aware_pairing ? 1 : 0, merged.date_format]
+                merged.gender_aware_pairing ? 1 : 0, merged.date_format, merged.allow_network_access ? 1 : 0]
         );
         store.persist();
         broadcast('club_settings', {});
