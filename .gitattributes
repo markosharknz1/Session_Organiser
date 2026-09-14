@@ -4,3 +4,6 @@
 .claude export-ignore
 PROGRESS.md export-ignore
 RELEASE_NOTES.md export-ignore
+# npm's command-line shims (crc32.ps1 etc.) - never run by the app, and the
+# release must contain no PowerShell at all (see SECURITY.md).
+node_modules/.bin export-ignore
