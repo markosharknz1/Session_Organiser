@@ -1,30 +1,28 @@
-## Game Scheduler v1.0.12
+## Game Scheduler v1.0.13
 
 ### Installing
 
-1. Download **`GameScheduler-v1.0.12.zip`** below and extract it anywhere - it's only the download.
-2. Double-click **`Game Scheduler.cmd`** inside the extracted folder. Windows may show an "Open File - Security Warning" because it's a script from the internet - click **Run**.
-3. A setup window opens: choose where to install (the default is `C:\Apps\Game_Scheduler` - anywhere is fine **except your Documents folder or anything OneDrive syncs**), tick whether you want a desktop shortcut, and click **Install and start**.
+1. Download **`GameScheduler-v1.0.13.zip`** below.
+2. **Before extracting it:** right-click the ZIP > **Properties** > tick **Unblock** (bottom right) > **OK**. This tells Windows the download is one you trust; without it, a Windows 11 PC with Smart App Control turned on refuses to run anything from the ZIP at all, and other PCs show a warning.
+3. Extract the ZIP anywhere - it's only the download - and double-click **`Game Scheduler.cmd`** inside the extracted folder.
+4. A setup window opens: choose where to install (the default is `C:\Apps\Game_Scheduler` - anywhere is fine **except your Documents folder or anything OneDrive syncs**), tick whether you want a desktop shortcut, and click **Install and start**.
 
-Setup copies the app to that folder, installs Node.js if the computer doesn't have it, creates the database, and opens the app. You can delete the downloaded folder afterwards; use the desktop shortcut from then on.
+Setup copies the app to that folder, prepares the database, and opens the app. Nothing is downloaded and nothing is installed on the computer - the app and its Node.js runtime are all in the ZIP. You can delete the downloaded folder afterwards; use the desktop shortcut from then on.
 
-**Upgrading from v1.0.10 or earlier:** run the new `Game Scheduler.cmd` and choose the folder your existing copy is in - it's upgraded in place and your `game_scheduler.db` (the club's entire roster and history) is kept. If your existing copy is in your Documents folder, choose a new location and copy `game_scheduler.db` across from the old folder before launching.
+If you skipped step 2 and Windows says **"Windows protected your PC"**: click *More info* > *Run anyway*. If it says **"Smart App Control blocked an app that may be unsafe"**: delete the extracted folder, do step 2 on the ZIP, and extract it again - Smart App Control can't be bypassed for one file, but an unblocked download isn't "from the internet" any more.
+
+**Upgrading from an earlier version:** run the new `Game Scheduler.cmd` and choose the folder your existing copy is in - it's upgraded in place and your `game_scheduler.db` (the club's entire roster and history) is kept. If your existing copy is in your Documents folder, choose a new location and copy `game_scheduler.db` across from the old folder before launching.
 
 ### What's new
 
-- **No more `.exe`.** Earlier releases shipped a packaged program that antivirus tools sometimes flagged purely for how it was packaged (7 engines on VirusTotal for v1.0.10, including Windows Defender). There is now no compiled program at all: the app is the readable source in the ZIP, run by Node.js, opening in the Microsoft Edge (or Chrome) already on the computer - in its own window, no address bar or tabs. The VirusTotal scan linked below is of this ZIP.
-- **A proper first-run setup** - install location, desktop shortcut, progress as it goes - and a brief start-up window on every later launch instead of console windows.
-- **v1.0.12 over v1.0.11:** the silent-launch helper was a Windows Script File (`.wsf`), which nine antivirus engines flagged as a generic "script loader" pattern. It's gone; the shortcut and launcher now use Windows' own `conhost --headless` instead. Nothing else changed.
-- **Singles sessions** (e.g. squash). Each session template - and the start-session forms - now has a format, doubles or singles. Auto-generate builds singles rounds properly: two players a court, same-grade opponents where the numbers allow, no repeat matchups from recent rounds, and the avoid-pair and grade-compatibility rules still apply.
-- **Settings has a menu down the left** - Overview, Session templates, Courts, Skill compatibility, Email, Payments, Club details - with one window at a time on the right. The Overview shows each normal session with its day, time, mode, format, courts and prices.
-- **Session templates offer every court number** (1-32); picking one not yet on the Courts page adds it there.
-- **Rounds played, one round at a time.** On the Rounds page the window steps through rounds with the time each started; in History a session's rounds are a table you click into.
-- **"Games played today"** button in the round designer - everyone checked in, fewest games first.
-- **History filter and trends** - all sessions, ad-hoc only, or one session template - driving the calendar, the list, the Excel export, and a trend panel with a players-per-session chart.
-- **CSV import template** button on the Player Database page with the exact columns.
-- Fixes: no horn for a stale round when the app opens; the "Download backup" button works inside the app window.
-- The app is sport-neutral throughout, and a brand-new install starts with no payment categories - each club sets up its own.
+- **Installs on a locked-down Windows 11 PC.** v1.0.12 was blocked outright on a PC with Smart App Control on: it blocks any `.cmd`, `.lnk` or script that came from the internet, and runs PowerShell in a restricted mode that can't show a window - which is what the old setup screen was. The launcher is now plain Node.js from start to finish: no PowerShell at all, no Windows Script Host, nothing compiled by this project. The download's only scripts are two one-screen batch files (start and stop) you can read in Notepad.
+- **The official Node.js runtime is in the ZIP** (`node\node.exe`, signed by the OpenJS Foundation; the release workflow downloads it from nodejs.org and checks it against nodejs.org's published checksums - see the *Verify this download* section below). Setup no longer needs winget, an internet connection, or admin rights.
+- **The setup screen is a page in the app window** (Edge or Chrome) instead of a PowerShell window - install location, desktop-shortcut tickbox, and progress as it goes. The desktop shortcut is written by the app itself rather than by a script.
+- Setup **removes the "downloaded from the internet" mark** from the installed files, so the installed copy never triggers Windows' download warnings again.
+- Edge's "we're now syncing your browsing data" prompt no longer appears over the app on a PC signed in with a Microsoft account.
+- Everything from v1.0.12 is unchanged: singles sessions, the Settings menu, one-round-at-a-time Rounds view, "Games played today", history filters and trends, the CSV import template.
 
 ### Notes
 
 - Your roster and history live in one local file (`game_scheduler.db`) - not included in this release, but backed up automatically to `Documents\GameScheduler\backups` every time the app opens.
+- The ZIP is bigger than v1.0.12's because the Node.js runtime is in it.

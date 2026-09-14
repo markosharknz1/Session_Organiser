@@ -1,6 +1,6 @@
 {
   "name": "game-scheduler",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Club session organiser - check-in, court rounds, display screen",
   "private": true,
   "type": "commonjs",
@@ -13,7 +13,8 @@
     "csv:sample": "node lib/csvImport.sample.js",
     "autogen:test": "node lib/autoGenerate.test.js",
     "report:test": "node lib/sessionReport.test.js",
-    "roundbuilder:test": "node public/roundBuilder.test.js"
+    "roundbuilder:test": "node public/roundBuilder.test.js",
+    "launcher:test": "node lib/shellLink.test.js && node lib/installDir.test.js"
   },
   "dependencies": {
     "exceljs": "4.4.0",

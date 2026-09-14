@@ -18,9 +18,13 @@ jobs:
       - run: npm run autogen:test
       - run: npm run report:test
       - run: npm run roundbuilder:test
+      - run: npm run launcher:test
       - name: Launcher and server load
         run: |
           node --check launcher.js
           node --check lib/appWindow.js
           node -e "require('./routes/launcher')"
-          test -f launcher.ps1 && test -f "Game Scheduler.cmd"
+          test -f "Game Scheduler.cmd" && test -f launcher/setup.html
+          # The download's only scripts are two plain batch files (start and
+          # stop). No PowerShell, no Windows Script Host - see SECURITY.md.
+          ! git ls-files | grep -Ei '\.(ps1|psm1|vbs|vbe|wsf|jse|hta)$'

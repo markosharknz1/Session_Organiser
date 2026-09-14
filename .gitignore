@@ -3,6 +3,10 @@ game_scheduler.db
 exports/
 logs/
 .edge-app-profile/
+.edge-setup-profile/
+# The bundled Node.js runtime is added to the release ZIP by the workflow
+# (downloaded from nodejs.org and checksum-verified there), never committed.
+/node/
 # Left over from the old PyInstaller launcher - never commit one again.
 GameScheduler.exe
 build/

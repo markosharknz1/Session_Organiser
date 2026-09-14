@@ -1,10 +1,13 @@
 # Publishes every release on GitHub's own runners, straight from the tagged
 # source - the ZIP people download is demonstrably the code in this
 # repository. There is nothing to compile: the app is plain Node.js and
-# opens in the Edge/Chrome already on the machine (see launcher.js), so the
-# ZIP is simply `git archive` of the tag. The release notes carry the
-# commit, a SHA-256 checksum, and (when a VirusTotal API key is configured
-# as the VT_API_KEY secret) a scan link.
+# opens in the Edge/Chrome already on the machine (see launcher.js). The
+# ZIP is `git archive` of the tag plus the official Node.js runtime for
+# Windows (node.exe, downloaded here from nodejs.org and checked against
+# the SHASUMS256.txt nodejs.org publishes) in a node\ subfolder, so a club
+# computer needs nothing installed. The release notes carry the commit, a
+# SHA-256 checksum, and (when a VirusTotal API key is configured as the
+# VT_API_KEY secret) a scan link.
 #
 # To cut a release: bump package.json, write RELEASE_NOTES.md, then
 #   git tag -a v1.2.3 -m v1.2.3 && git push origin v1.2.3
@@ -16,6 +19,11 @@ on:
 
 permissions:
   contents: write
+
+env:
+  # The Node.js runtime shipped in the ZIP (an LTS release; nodejs.org
+  # publishes security releases on the same line - bump this when they do).
+  NODE_RUNTIME_VERSION: '24.21.0'
 
 jobs:
   release:
@@ -34,16 +42,41 @@ jobs:
           npm run autogen:test
           npm run report:test
           npm run roundbuilder:test
+          npm run launcher:test
           node --check launcher.js
+
+      - name: Fetch the official Node.js runtime for Windows
+        run: |
+          v="$NODE_RUNTIME_VERSION"
+          curl -fsSLO "https://nodejs.org/dist/v$v/node-v$v-win-x64.zip"
+          curl -fsSLO "https://nodejs.org/dist/v$v/SHASUMS256.txt"
+          grep " node-v$v-win-x64.zip\$" SHASUMS256.txt | sha256sum -c -
+          unzip -q "node-v$v-win-x64.zip" "node-v$v-win-x64/node.exe" "node-v$v-win-x64/LICENSE"
+          mkdir -p runtime
+          mv "node-v$v-win-x64/node.exe" "node-v$v-win-x64/LICENSE" runtime/
+          sha256sum runtime/node.exe | tee NODE_EXE_SHA256.txt
+          {
+            echo "This is the official Node.js v$v runtime for Windows (node.exe) from"
+            echo "https://nodejs.org/dist/v$v/node-v$v-win-x64.zip, unchanged, and its"
+            echo "licence. The release workflow downloaded it and verified it against"
+            echo "nodejs.org's SHASUMS256.txt. It is signed by the OpenJS Foundation:"
+            echo "right-click node.exe > Properties > Digital Signatures to check."
+            echo
+            echo "node.exe SHA-256: $(cut -d' ' -f1 NODE_EXE_SHA256.txt)"
+          } > runtime/README.txt
 
       - name: Package release ZIP
         run: |
           tag="${{ github.ref_name }}"
           # Everything tracked in git (node_modules is committed, so this is a
           # complete install; .gitattributes export-ignore trims dev-only files)
-          git archive --format=zip --prefix=GameScheduler/ -o "GameScheduler-$tag.zip" HEAD
+          git archive --format=tar --prefix=GameScheduler/ HEAD | tar -x
+          mkdir GameScheduler/node
+          cp runtime/node.exe runtime/LICENSE runtime/README.txt GameScheduler/node/
+          zip -qr "GameScheduler-$tag.zip" GameScheduler
           sha256sum "GameScheduler-$tag.zip" > SHA256SUMS.txt
           cat SHA256SUMS.txt
+          ls -l "GameScheduler-$tag.zip"
 
       - name: VirusTotal scan
         id: vt
@@ -60,11 +93,12 @@ jobs:
             echo
             echo "## Verify this download"
             echo
-            echo "Built by GitHub Actions from commit [\`${{ github.sha }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) - see the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}). The ZIP is the tagged source exactly as you can read it here - there is no compiled executable in it."
+            echo "Built by GitHub Actions from commit [\`${{ github.sha }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) - see the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}). The ZIP is the tagged source exactly as you can read it here, plus the official Node.js v$NODE_RUNTIME_VERSION runtime for Windows in its \`node\` folder (downloaded from nodejs.org by the workflow and checked against nodejs.org's published checksums; signed by the OpenJS Foundation). Nothing in it was compiled by this project."
             echo
             echo "SHA-256:"
             echo '```'
             cat SHA256SUMS.txt
+            echo "$(cut -d' ' -f1 NODE_EXE_SHA256.txt)  GameScheduler/node/node.exe (official nodejs.org build)"
             echo '```'
             vt="${{ steps.vt.outputs.analysis }}"
             if [ -n "$vt" ]; then

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Game Scheduler Setup</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: #1f2937; font: 15px/1.5 "Segoe UI", system-ui, sans-serif; }
+  .page { max-width: 560px; margin: 0 auto; padding: 28px 32px 32px; }
+  h1 { font-size: 22px; margin: 0 0 14px; }
+  h1.ok { color: #15803d; }
+  h1.bad { color: #b91c1c; }
+  p { margin: 0 0 12px; }
+  ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 4px; }
+  label.h { display: block; font-weight: 600; margin: 18px 0 6px; }
+  input[type=text] { width: 100%; font: inherit; padding: 8px 10px; border: 1px solid #9ca3af; border-radius: 6px; }
+  input[type=text]:focus { outline: 2px solid #2563eb; border-color: #2563eb; }
+  .note { font-size: 13px; color: #4b5563; margin-top: 8px; }
+  .error { color: #b91c1c; min-height: 22px; margin: 8px 0 0; font-size: 14px; }
+  .check { display: flex; align-items: center; gap: 8px; margin: 18px 0 0; }
+  .check input { width: 17px; height: 17px; }
+  .buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 26px; }
+  button { font: inherit; padding: 8px 18px; border-radius: 6px; border: 1px solid #9ca3af; background: #f9fafb; cursor: pointer; }
+  button.primary { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .steps { list-style: none; padding: 0; margin: 4px 0 0; font-size: 15px; }
+  .steps li { padding: 4px 0 4px 30px; position: relative; }
+  .steps li::before { position: absolute; left: 4px; width: 20px; text-align: center; }
+  .steps li.running::before { content: "…"; color: #2563eb; }
+  .steps li.done::before { content: "✓"; color: #15803d; font-weight: 700; }
+  .steps li.failed::before { content: "✕"; color: #b91c1c; font-weight: 700; }
+  .bar { height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; margin: 18px 0 6px; }
+  .bar i { display: block; width: 35%; height: 100%; background: #2563eb; border-radius: 3px; animation: slide 1.4s ease-in-out infinite; }
+  @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+  .message { white-space: pre-wrap; margin-top: 14px; }
+  .small { font-size: 13px; color: #6b7280; margin-top: 22px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="page">
+  <section id="welcome">
+    <h1>Welcome to Game Scheduler</h1>
+    <p>This one-time setup gets everything ready. It will:</p>
+    <ol>
+      <li>Copy the app to the folder below</li>
+      <li>Prepare the database</li>
+      <li>Start Game Scheduler</li>
+    </ol>
+    <p>Nothing is downloaded and no accounts are needed - the app and its Node.js runtime are all in the folder you extracted. See SECURITY.md for the full story.</p>
+
+    <label class="h" for="dir">Install to:</label>
+    <input type="text" id="dir" spellcheck="false" autocomplete="off">
+    <p class="note">Type or paste a folder path. Anywhere is fine <b>except your Documents folder or another folder OneDrive syncs</b>: the app's database changes constantly while a session runs, and syncing it corrupts it. (Backups are saved to Documents\GameScheduler\backups automatically.) If Game Scheduler is already installed in the folder you choose, it's upgraded and your data is kept.</p>
+    <p class="error" id="dir-error"></p>
+
+    <label class="check"><input type="checkbox" id="shortcut" checked> Create a desktop shortcut</label>
+
+    <div class="buttons">
+      <button id="cancel">Cancel</button>
+      <button id="go" class="primary">Install and start</button>
+    </div>
+  </section>
+
+  <section id="progress" hidden>
+    <h1 id="progress-title">Setting up Game Scheduler</h1>
+    <ul class="steps" id="steps"></ul>
+    <div class="bar" id="bar"><i></i></div>
+    <p class="message" id="message"></p>
+    <div class="buttons" id="close-row" hidden><button id="close">Close</button></div>
+    <p class="small" id="hint" hidden>This window closes on its own once the app has opened.</p>
+  </section>
+</div>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const api = (url, body) => fetch(url, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}).then((r) => r.json());
+
+  api('/api/setup').then((s) => { $('dir').value = s.defaultDir || ''; $('dir').focus(); });
+  api('/api/status').then((st) => { if (st.phase !== 'welcome') { $('welcome').hidden = true; $('progress').hidden = false; render(st); if (st.phase === 'running') poll(); } });
+
+  $('cancel').addEventListener('click', () => { api('/api/cancel', {}); document.body.innerHTML = '<div class="page"><h1>Setup cancelled</h1><p>You can close this window.</p></div>'; });
+
+  $('go').addEventListener('click', async () => {
+    $('go').disabled = true; $('dir-error').textContent = '';
+    const res = await api('/api/install', { dir: $('dir').value, shortcut: $('shortcut').checked }).catch(() => ({ error: 'Setup did not respond. Close this window and run Game Scheduler.cmd again.' }));
+    if (res.error) { $('dir-error').textContent = res.error; $('go').disabled = false; return; }
+    $('welcome').hidden = true; $('progress').hidden = false;
+    poll();
+  });
+  $('dir').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('go').click(); });
+  $('close').addEventListener('click', () => { api('/api/cancel', {}); window.close(); });
+
+  function render(st) {
+    $('steps').innerHTML = st.steps.map((s) => `<li class="${s.state}">${escape(s.text)}</li>`).join('');
+    $('message').textContent = st.message || '';
+    if (st.phase === 'done') {
+      $('progress-title').textContent = 'Setup complete'; $('progress-title').className = 'ok';
+      $('bar').hidden = true; $('hint').hidden = false;
+    } else if (st.phase === 'failed') {
+      $('progress-title').textContent = 'Setup could not finish'; $('progress-title').className = 'bad';
+      $('bar').hidden = true; $('close-row').hidden = false;
+    }
+  }
+  function escape(t) { return t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+  async function poll() {
+    let st;
+    try { st = await api('/api/status'); } catch (e) { return; }
+    render(st);
+    if (st.phase === 'running') setTimeout(poll, 400);
+  }
+})();
+</script>
+</body>
+</html>
