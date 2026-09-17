@@ -51,6 +51,12 @@ function skillBadge(skill) {
     return skill ? `<span class="badge skill-${skill}">${skill}</span>` : '';
 }
 
+// "(3)" after a name on the round cards: games this player has had tonight
+// (a live game counts itself; on an "Up next" card it's games so far).
+function gamesCount(n) {
+    return typeof n === 'number' ? ` <span class="games-count" title="Games played tonight">(${n})</span>` : '';
+}
+
 function genderBadge(gender) {
     if (!gender) return '';
     const g = gender === 'M' || gender === 'F' ? gender : 'O';
@@ -505,7 +511,7 @@ async function renderRoundGamesPanel() {
     $('#active-round-plus').disabled = viewedRound >= defaultViewedRound();
     const sideLines = (g, sideNum) => g.players
         .filter((p) => p.side === sideNum)
-        .map((p) => `<div class="active-game-player">${p.first_name} ${p.last_name}${skillBadge(p.skill_level_at_time)}</div>`)
+        .map((p) => `<div class="active-game-player">${p.first_name} ${p.last_name}${skillBadge(p.skill_level_at_time)}${gamesCount(p.games_played)}</div>`)
         .join('');
     $('#active-games-grid').innerHTML = games.map((g) => `
         <div class="active-game-card">

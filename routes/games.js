@@ -10,11 +10,18 @@ const FORMAT_SIZES = { singles: 2, doubles: 4 };
 function gameWithPlayers(gameId) {
     const game = store.queryOne('SELECT * FROM games WHERE id = ?', [gameId]);
     if (!game) return null;
+    // games_played: the player's games this session up to and including
+    // this round (active/completed only, so a staged "up next" game shows
+    // what they've had so far, a live one counts itself) - the "(3)" shown
+    // beside each name on the Rounds page.
     const players = store.query(
-        `SELECT gp.player_id, gp.side, gp.skill_level_at_time, p.first_name, p.last_name, p.gender
+        `SELECT gp.player_id, gp.side, gp.skill_level_at_time, p.first_name, p.last_name, p.gender,
+                (SELECT COUNT(*) FROM game_players gp2 JOIN games g2 ON g2.id = gp2.game_id
+                 WHERE gp2.player_id = gp.player_id AND g2.session_id = ? AND g2.round_number <= ?
+                   AND g2.status IN ('active','completed')) AS games_played
          FROM game_players gp JOIN players p ON p.id = gp.player_id
          WHERE gp.game_id = ? ORDER BY gp.side, p.last_name`,
-        [gameId]
+        [game.session_id, game.round_number, gameId]
     );
     return { ...game, players };
 }

@@ -642,6 +642,7 @@ nav.app-nav a.active {
 .active-game-side { margin-bottom: 10px; }
 .active-game-side:last-child { margin-bottom: 0; }
 .active-game-player { font-size: 0.85rem; }
+.games-count { color: var(--muted, #6b7280); font-size: 0.8rem; }
 
 /* Up next (staged, not yet on court) - amber instead of the live/green look,
    so a break-time preview never reads as "already playing". */
