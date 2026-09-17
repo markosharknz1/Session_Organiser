@@ -279,15 +279,32 @@ label { font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 
     margin-left: 6px;
 }
 
-.badge.skill-A { background: #fee2e2; color: #b91c1c; }
-.badge.skill-B { background: #ffedd5; color: #c2410c; }
-.badge.skill-C { background: #fef9c3; color: #a16207; }
-.badge.skill-D { background: #dcfce7; color: #15803d; }
-.badge.skill-E { background: #e0e7ff; color: #4338ca; }
+/* Grade and gender flags: solid, saturated fills with white text and a
+   fixed width, so they read at a glance from across a desk - the earlier
+   pastel-on-pastel version was hard to see, especially C (yellow) and the
+   M/F pair. Grade colours run hot to cool A..E; gender is blue (M) / pink
+   (F) at the same weight. */
+.badge.skill-A, .badge.skill-B, .badge.skill-C, .badge.skill-D, .badge.skill-E,
+.badge.gender-M, .badge.gender-F, .badge.gender-O {
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    min-width: 1.6em;
+    padding: 2px 6px;
+    text-align: center;
+    border-radius: 6px;
+    margin-left: 5px;
+    line-height: 1.35;
+}
+.badge.skill-A { background: #dc2626; }
+.badge.skill-B { background: #ea580c; }
+.badge.skill-C { background: #ca8a04; }
+.badge.skill-D { background: #16a34a; }
+.badge.skill-E { background: #2563eb; }
 
-.badge.gender-M { background: #dbeafe; color: #1d4ed8; }
-.badge.gender-F { background: #fce7f3; color: #be185d; }
-.badge.gender-O { background: #ede9fe; color: #6d28d9; }
+.badge.gender-M { background: #1d4ed8; }
+.badge.gender-F { background: #db2777; }
+.badge.gender-O { background: #7c3aed; }
 
 .court-checks {
     display: grid;
