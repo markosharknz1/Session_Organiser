@@ -45,6 +45,7 @@
             <button type="button" data-goto="club-defaults">Game defaults</button>
             <button type="button" data-goto="payment-categories">Payment categories</button>
         </div>
+        <button type="button" data-goto="about">About</button>
     </nav>
     <div class="settings-content">
 
@@ -58,6 +59,19 @@
         </div>
         <h3>Normal sessions</h3>
         <div id="overview-sessions"></div>
+    </section>
+
+    <section class="panel" data-section="about">
+        <div class="settings-head"><h2>About Game Scheduler</h2></div>
+        <dl class="about-list">
+            <dt>Version</dt><dd id="about-version">-</dd>
+            <dt>Released</dt><dd id="about-released">-</dd>
+            <dt>Contact</dt><dd><a class="textlink" id="about-email" href="#"></a></dd>
+            <dt>Website</dt><dd><a class="textlink" id="about-repo" href="#" target="_blank" rel="noopener"></a></dd>
+            <dt>Downloads</dt><dd><a class="textlink" id="about-releases" href="#" target="_blank" rel="noopener">Releases page - latest version, release notes, checksums</a></dd>
+        </dl>
+        <p class="muted" style="margin-top:14px;">Runs entirely on this computer - no accounts, no cloud, nothing leaves the machine. Your club's data is in <code>game_scheduler.db</code> next to the app, backed up to Documents\GameSchedulerackups each time it opens.</p>
+        <p class="muted" id="about-runtime"></p>
     </section>
 
     <section class="panel" data-section="club-details">

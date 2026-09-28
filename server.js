@@ -20,6 +20,7 @@ const paymentCategoriesRouter = require('./routes/paymentCategories');
 const backupRouter = require('./routes/backup');
 const brandingRouter = require('./routes/branding');
 const launcherRouter = require('./routes/launcher');
+const aboutRouter = require('./routes/about');
 const scheduler = require('./lib/scheduler');
 
 const PORT = process.env.PORT || 4000;
@@ -60,6 +61,7 @@ async function main() {
     app.use('/api/backup', backupRouter);
     app.use('/api/branding', brandingRouter);
     app.use('/api/launcher', launcherRouter);
+    app.use('/api/about', aboutRouter);
 
     // sw.js's own network-first fetch handler only helps once it's actually
     // running the latest version of itself - if the browser's ordinary HTTP

@@ -77,6 +77,24 @@ function showSettingsSection(name) {
 document.querySelectorAll('[data-goto]').forEach((btn) => btn.addEventListener('click', () => showSettingsSection(btn.dataset.goto)));
 showSettingsSection('overview');
 
+// --- About: version, release date, contact, website (GET /api/about) ---
+async function loadAbout() {
+    try {
+        const a = await api('/api/about');
+        $('#about-version').textContent = a.development_build ? `${a.version} (development build)` : a.version;
+        $('#about-released').textContent = a.released ? formatDate(a.released) : 'Not a packaged release';
+        $('#about-email').textContent = a.contact_email;
+        $('#about-email').href = `mailto:${a.contact_email}?subject=${encodeURIComponent('Game Scheduler ' + a.version)}`;
+        $('#about-repo').textContent = a.repo_url.replace(/^https?:\/\//, '');
+        $('#about-repo').href = a.repo_url;
+        $('#about-releases').href = a.releases_url;
+        $('#about-runtime').textContent = `Node.js ${a.node_version}${a.commit ? ` - built from commit ${a.commit.slice(0, 7)}` : ''}`;
+    } catch (err) {
+        $('#about-version').textContent = 'Unavailable';
+    }
+}
+loadAbout();
+
 // --- Overview (what Settings opens to): the club at a glance ---
 let clubSettings = null;
 
