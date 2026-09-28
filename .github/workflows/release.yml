@@ -72,8 +72,8 @@ jobs:
           # complete install; .gitattributes export-ignore trims dev-only files)
           git archive --format=tar --prefix=GameScheduler/ HEAD | tar -x
           # Settings > About reads this: version, release date, commit.
-          printf '{ "version": "%s", "released": "%s", "commit": "%s", "tag": "%s" }
-'             "${tag#v}" "$(date -u +%Y-%m-%d)" "${{ github.sha }}" "$tag" > GameScheduler/build-info.json
+          printf '{ "version": "%s", "released": "%s", "commit": "%s", "tag": "%s" }\n' \
+            "${tag#v}" "$(date -u +%Y-%m-%d)" "${{ github.sha }}" "$tag" > GameScheduler/build-info.json
           cat GameScheduler/build-info.json
           mkdir GameScheduler/node
           cp runtime/node.exe runtime/LICENSE runtime/README.txt GameScheduler/node/
