@@ -93,7 +93,6 @@ async function loadAbout() {
         $('#about-version').textContent = 'Unavailable';
     }
 }
-loadAbout();
 
 // --- Overview (what Settings opens to): the club at a glance ---
 let clubSettings = null;
@@ -137,6 +136,7 @@ async function loadSettings() {
     $('#club-name').textContent = s.club_name;
     applyBranding(s);
     setDateFormat(s.date_format);
+    loadAbout(); // after the date format is known, so the release date shows in the club's format
     $('#cs-name').value = s.club_name;
     $('#cs-date-format').value = s.date_format;
     $('#cs-game').value = s.default_game_minutes;
