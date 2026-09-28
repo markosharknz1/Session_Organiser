@@ -852,6 +852,66 @@ $('#booked-tbody').addEventListener('click', (e) => {
     }
 });
 
+// --- Right-click menu on a checked-in or booked row ---
+// The payment cell has always been single-click to edit, but nobody finds
+// that when a payment was keyed wrong; a right-click menu on the whole
+// row is the obvious place to look. Same actions as the existing
+// controls, just reachable.
+function hideRowMenu() {
+    $('#row-menu').style.display = 'none';
+    $('#row-menu').innerHTML = '';
+}
+
+function showRowMenu(e, title, items) {
+    e.preventDefault();
+    const menu = $('#row-menu');
+    menu.innerHTML = `<div class="ctx-title">${esc(title)}</div>` + items.map((it, i) =>
+        `<button type="button" data-idx="${i}" class="${it.danger ? 'danger' : ''}">${esc(it.label)}</button>`).join('');
+    menu.querySelectorAll('button').forEach((btn) => {
+        btn.addEventListener('click', () => { hideRowMenu(); items[Number(btn.dataset.idx)].run(); });
+    });
+    menu.style.display = 'block';
+    // Keep it on screen near the pointer.
+    const x = Math.min(e.clientX, window.innerWidth - menu.offsetWidth - 8);
+    const y = Math.min(e.clientY, window.innerHeight - menu.offsetHeight - 8);
+    menu.style.left = `${Math.max(4, x)}px`;
+    menu.style.top = `${Math.max(4, y)}px`;
+    menu.querySelector('button')?.focus();
+}
+
+document.addEventListener('click', (e) => { if (!e.target.closest('#row-menu')) hideRowMenu(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideRowMenu(); });
+window.addEventListener('scroll', hideRowMenu, true);
+window.addEventListener('resize', hideRowMenu);
+
+$('#here-tbody').addEventListener('contextmenu', (e) => {
+    const tr = e.target.closest('tr[data-attendance-id]');
+    if (!tr) return;
+    const attendanceId = Number(tr.dataset.attendanceId);
+    const playerId = Number(tr.dataset.playerId);
+    const a = attendance.find((x) => x.id === attendanceId);
+    if (!a) return;
+    const items = [];
+    if (paymentTrackingEnabled) {
+        items.push({ label: a.payment_category_id ? 'Change payment...' : 'Record payment...', run: () => openPaymentModal(attendanceId) });
+    }
+    items.push({ label: 'Remove from today', danger: true, run: () => removeFromToday(attendanceId, playerId) });
+    showRowMenu(e, `${a.first_name} ${a.last_name}`, items);
+});
+
+$('#booked-tbody').addEventListener('contextmenu', (e) => {
+    const tr = e.target.closest('tr[data-attendance-id]');
+    if (!tr) return;
+    const attendanceId = Number(tr.dataset.attendanceId);
+    const playerId = Number(tr.dataset.playerId);
+    const a = attendance.find((x) => x.id === attendanceId);
+    if (!a) return;
+    showRowMenu(e, `${a.first_name} ${a.last_name} (booked)`, [
+        { label: 'Arrived - check in...', run: () => openCheckinModal(playerId, attendanceId) },
+        { label: 'Cancel booking', danger: true, run: () => removeFromToday(attendanceId, playerId) },
+    ]);
+});
+
 // --- Payment recording ---
 function openPaymentModal(attendanceId) {
     const a = attendance.find((x) => x.id === attendanceId);

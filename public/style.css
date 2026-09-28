@@ -982,6 +982,41 @@ textarea {
 .breadcrumb a:hover { text-decoration: underline; }
 
 /* --- Modal (payment recording) --- */
+/* Right-click menu on a check-in row: "Change payment", "Remove from today" */
+.ctx-menu {
+    position: fixed;
+    z-index: 60;
+    min-width: 200px;
+    background: var(--panel, #fff);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+    padding: 6px;
+}
+.ctx-menu .ctx-title {
+    padding: 6px 10px 4px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+    white-space: nowrap;
+}
+.ctx-menu button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ctx-menu button:hover, .ctx-menu button:focus { background: #eef2ff; outline: none; }
+.ctx-menu button.danger { color: var(--danger); }
+.ctx-menu button.danger:hover { background: #fee2e2; }
+
 .modal-backdrop {
     position: fixed;
     inset: 0;
