@@ -155,7 +155,7 @@ function renderTemplateChoice(template, date) {
     const body = $('#start-session-body');
     body.innerHTML = `
         <p><strong>${template.label}</strong> - ${template.start_time} to ${template.end_time}
-        (${template.courts.length} court${template.courts.length === 1 ? '' : 's'}, ${template.default_format === 'singles' ? 'singles' : 'doubles'}, mode: ${template.default_mode}${template.default_max_capacity ? `, guideline: ${template.default_max_capacity} players` : ''})</p>
+        (${template.courts.length} court${template.courts.length === 1 ? '' : 's'}, ${template.default_format || 'doubles'}, mode: ${template.default_mode}${template.default_max_capacity ? `, guideline: ${template.default_max_capacity} players` : ''})</p>
         <div class="template-choice">
             <button class="primary" id="same-as-usual">Same as usual</button>
             <button id="need-to-change">Need to change something</button>
@@ -195,8 +195,9 @@ async function renderChangeForm(template, date) {
             <div class="field">
                 <label>Format</label>
                 <select id="cf-format">
-                    <option value="doubles" ${template.default_format !== 'singles' ? 'selected' : ''}>Doubles (4 a court)</option>
+                    <option value="doubles" ${!template.default_format || template.default_format === 'doubles' ? 'selected' : ''}>Doubles (4 a court)</option>
                     <option value="singles" ${template.default_format === 'singles' ? 'selected' : ''}>Singles (2 a court, e.g. squash)</option>
+                    <option value="threes" ${template.default_format === 'threes' ? 'selected' : ''}>Threes (3 a court, no sides - e.g. squash)</option>
                 </select>
             </div>
             <div class="field">
@@ -254,7 +255,7 @@ async function renderAdhocForm(date) {
             </div>
             <div class="field">
                 <label>Format</label>
-                <select id="ah-format"><option value="doubles">Doubles (4 a court)</option><option value="singles">Singles (2 a court, e.g. squash)</option></select>
+                <select id="ah-format"><option value="doubles">Doubles (4 a court)</option><option value="singles">Singles (2 a court, e.g. squash)</option><option value="threes">Threes (3 a court, no sides - e.g. squash)</option></select>
             </div>
         </div>
         <div class="field">

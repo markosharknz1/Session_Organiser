@@ -190,11 +190,11 @@ function ensureColumns(db) {
     // and per session, so one club can run both kinds of night.
     const templateColsNow = all(db, `PRAGMA table_info(session_templates)`).map((c) => c.name);
     if (!templateColsNow.includes('default_format')) {
-        db.run(`ALTER TABLE session_templates ADD COLUMN default_format TEXT NOT NULL DEFAULT 'doubles' CHECK (default_format IN ('doubles','singles'))`);
+        db.run(`ALTER TABLE session_templates ADD COLUMN default_format TEXT NOT NULL DEFAULT 'doubles' CHECK (default_format IN ('doubles','singles','threes'))`);
     }
     const sessionColsNow = all(db, `PRAGMA table_info(sessions)`).map((c) => c.name);
     if (!sessionColsNow.includes('format')) {
-        db.run(`ALTER TABLE sessions ADD COLUMN format TEXT NOT NULL DEFAULT 'doubles' CHECK (format IN ('doubles','singles'))`);
+        db.run(`ALTER TABLE sessions ADD COLUMN format TEXT NOT NULL DEFAULT 'doubles' CHECK (format IN ('doubles','singles','threes'))`);
     }
 
     const gamesCols = all(db, `PRAGMA table_info(games)`).map((c) => c.name);
@@ -344,6 +344,48 @@ function ensureSessionsPausedPhase(db) {
     db.run(`CREATE INDEX IF NOT EXISTS idx_sessions_date ON sessions(date)`);
 }
 
+// Adds 'threes' (three on a court, no sides) to the format CHECK constraint
+// on session_templates, sessions and games. Same reason as the two
+// rebuilds above - SQLite can't alter a CHECK in place - but done
+// generically: each table is recreated from its OWN stored CREATE TABLE
+// text with only the constraint widened, and rows are copied with
+// SELECT *, so whatever columns a particular database has picked up over
+// the years come across untouched. Indexes are read back and recreated.
+// A no-op once a table already allows 'threes'. If a row count doesn't
+// match after the copy it throws before dropping anything - nothing is
+// written to disk until init() finishes, so a failure leaves the file as
+// it was.
+function ensureThreesFormat(db) {
+    for (const table of ['session_templates', 'sessions', 'games']) {
+        const row = get(db, `SELECT sql FROM sqlite_master WHERE type='table' AND name=?`, [table]);
+        if (!row || row.sql.includes("'threes'")) continue;
+        const widened = row.sql
+            .replace(/IN \('doubles','singles'\)/g, "IN ('doubles','singles','threes')")
+            .replace(/IN \('singles','doubles'\)/g, "IN ('singles','doubles','threes')");
+        if (widened === row.sql) continue; // no format constraint on this table - nothing to widen
+        const createNew = widened.replace(/^CREATE TABLE\s+(?:IF NOT EXISTS\s+)?["`\[]?\w+["`\]]?/i, `CREATE TABLE ${table}_new`);
+        const indexes = all(db, `SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name=? AND sql IS NOT NULL`, [table]).map((r) => r.sql);
+        const before = get(db, `SELECT COUNT(*) AS n FROM ${table}`).n;
+        // The AUTOINCREMENT counter can be ahead of the highest surviving id
+        // (rows deleted since) - carry it over so an id is never reused.
+        const seq = get(db, `SELECT seq FROM sqlite_sequence WHERE name = ?`, [table]);
+        db.run(createNew);
+        db.run(`INSERT INTO ${table}_new SELECT * FROM ${table}`);
+        const after = get(db, `SELECT COUNT(*) AS n FROM ${table}_new`).n;
+        if (after !== before) {
+            db.run(`DROP TABLE ${table}_new`);
+            throw new Error(`ensureThreesFormat: ${table} copy kept ${after} of ${before} rows - left unchanged`);
+        }
+        db.run(`DROP TABLE ${table}`);
+        db.run(`ALTER TABLE ${table}_new RENAME TO ${table}`);
+        if (seq) {
+            db.run(`DELETE FROM sqlite_sequence WHERE name = ?`, [table]);
+            db.run(`INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)`, [table, seq.seq]);
+        }
+        for (const sql of indexes) db.run(sql.replace(/^CREATE INDEX\s+(?!IF NOT EXISTS)/i, 'CREATE INDEX IF NOT EXISTS '));
+    }
+}
+
 // A plain-text explainer dropped once into the backup folder itself, so
 // it's findable by anyone who stumbles onto Documents\GameScheduler\backups
 // without already knowing what this app is or where to get it again -
@@ -442,6 +484,6 @@ function get(db, sql, params = []) {
 
 module.exports = {
     DB_PATH, SCHEMA_PATH, BACKUP_DIR, openDb, applySchema, saveDb, all, get,
-    ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, listBackups,
+    ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, listBackups,
     todayLocalDateStr,
 };

@@ -9,7 +9,7 @@ const router = express.Router();
 
 const STATUSES = ['open', 'closed'];
 const MODES = ['auto', 'manual', 'social'];
-const FORMATS = ['doubles', 'singles']; // 4 a court, or 2 a court (e.g. squash)
+const FORMATS = ['doubles', 'singles', 'threes']; // 4 a court, 2 a court, or 3 on a court with no sides (e.g. squash)
 const PHASES = ['idle', 'game', 'break', 'awaiting_lineup', 'paused'];
 
 function paymentRatesForSession(sessionId) {

@@ -276,6 +276,16 @@ function renderGameRow(g) {
         .filter((p) => p.side === n)
         .map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillTag(p.skill_level_at_time)}`)
         .join(' & ') || '<span class="muted">-</span>';
+    if (g.format === 'threes') {
+        // no sides, no "vs": just the three on the court
+        return `
+        <div class="history-game">
+            <span class="court-tag">Court ${g.court_number}</span>
+            <span class="team">${g.players.map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillTag(p.skill_level_at_time)}`).join(' &middot; ')}</span>
+            <span class="muted">threes</span>
+        </div>
+    `;
+    }
     return `
         <div class="history-game">
             <span class="court-tag">Court ${g.court_number}</span>

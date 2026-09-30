@@ -115,10 +115,13 @@ router.get('/players/:id', (req, res) => {
              WHERE gp.game_id = ? AND gp.player_id != ?`,
             [g.game_id, req.params.id]
         );
+        // "Threes" has no sides: the other two on the court are both
+        // people this player played against, in turn.
+        const unsided = g.format === 'threes';
         return {
             ...g,
-            partners: others.filter((o) => o.side === g.side),
-            opponents: others.filter((o) => o.side !== g.side),
+            partners: unsided ? [] : others.filter((o) => o.side === g.side),
+            opponents: unsided ? others : others.filter((o) => o.side !== g.side),
         };
     });
 

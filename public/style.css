@@ -530,6 +530,9 @@ nav.app-nav a.active {
     margin-bottom: 10px;
 }
 
+/* Threes: one group of three, no second side */
+.sides.unsided { display: block; }
+
 .side-box {
     flex: none;
     border: 1px dashed var(--border);

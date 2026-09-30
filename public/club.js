@@ -59,6 +59,7 @@ function dollarsDisplay(cents) {
 // --- Section switcher ---
 // Left sidebar picks the window; Club details expands into its own
 // sub-items while it (or one of them) is showing.
+const FORMAT_LABELS = { doubles: 'Doubles', singles: 'Singles', threes: 'Threes (3 a court, no sides)' };
 const CLUB_DETAIL_SECTIONS = ['club-details', 'club-name', 'club-date', 'club-defaults', 'payment-categories'];
 
 function showSettingsSection(name) {
@@ -120,7 +121,7 @@ function renderOverview() {
             <div class="overview-session">
                 <div>
                     <strong>${esc(t.label)}</strong>
-                    <p class="muted" style="margin:4px 0 0;">${DAY_LABELS[t.day_of_week] || t.day_of_week} ${t.start_time}-${t.end_time} · ${modeLabel} mode · ${t.default_format === 'singles' ? 'Singles' : 'Doubles'}<br>Courts ${courtNumbers}${t.default_max_capacity ? ` · guideline ${t.default_max_capacity} players` : ''}</p>
+                    <p class="muted" style="margin:4px 0 0;">${DAY_LABELS[t.day_of_week] || t.day_of_week} ${t.start_time}-${t.end_time} · ${modeLabel} mode · ${FORMAT_LABELS[t.default_format] || 'Doubles'}<br>Courts ${courtNumbers}${t.default_max_capacity ? ` · guideline ${t.default_max_capacity} players` : ''}</p>
                 </div>
                 ${priceBox}
             </div>
@@ -551,8 +552,9 @@ function templateEditHtml(t, idx) {
                 <div class="field">
                     <label>Format</label>
                     <select data-field="default_format">
-                        <option value="doubles" ${t.default_format !== 'singles' ? 'selected' : ''}>Doubles (4 a court)</option>
+                        <option value="doubles" ${!t.default_format || t.default_format === 'doubles' ? 'selected' : ''}>Doubles (4 a court)</option>
                         <option value="singles" ${t.default_format === 'singles' ? 'selected' : ''}>Singles (2 a court, e.g. squash)</option>
+                        <option value="threes" ${t.default_format === 'threes' ? 'selected' : ''}>Threes (3 a court, no sides - e.g. squash)</option>
                     </select>
                 </div>
                 <div class="field">
@@ -619,7 +621,7 @@ function templateReadonlyHtml(t, idx) {
                     <button class="small" data-action="delete" data-idx="${idx}">Delete</button>
                 </span>
             </div>
-            <p class="muted">${DAY_LABELS[t.day_of_week] || t.day_of_week} ${t.start_time}-${t.end_time} &middot; ${modeLabel} mode &middot; ${t.default_format === 'singles' ? 'Singles' : 'Doubles'} &middot; Courts ${courtNumbers}${t.default_max_capacity ? ` &middot; guideline ${t.default_max_capacity} players` : ''}${t.default_game_minutes ? ` &middot; ${t.default_game_minutes}min games` : ''}${t.default_break_minutes ? ` &middot; ${t.default_break_minutes}min changeovers` : ''}</p>
+            <p class="muted">${DAY_LABELS[t.day_of_week] || t.day_of_week} ${t.start_time}-${t.end_time} &middot; ${modeLabel} mode &middot; ${FORMAT_LABELS[t.default_format] || 'Doubles'} &middot; Courts ${courtNumbers}${t.default_max_capacity ? ` &middot; guideline ${t.default_max_capacity} players` : ''}${t.default_game_minutes ? ` &middot; ${t.default_game_minutes}min games` : ''}${t.default_break_minutes ? ` &middot; ${t.default_break_minutes}min changeovers` : ''}</p>
             <p class="muted">Prices: ${priceSummary}</p>
         </div>
     `;

@@ -172,7 +172,7 @@ function renderCourts() {
             <div class="court ${upNext ? 'up-next' : ''}">
                 <h2>Court ${c.court_number}${upNext ? ' <span class="up-next-badge">Up next</span>' : ''}</h2>
                 <div class="team">${side(1)}</div>
-                <div class="team">${side(2)}</div>
+                ${shown.format === 'threes' ? '' : `<div class="team">${side(2)}</div>`}
             </div>
         `;
     }).join('');

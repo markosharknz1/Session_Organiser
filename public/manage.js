@@ -23,7 +23,15 @@ let playedPreviousRoundIds = new Set(); // player ids who played in buildRound-1
 // makes "last issued wins" instead of "last resolved wins".
 let builderRequestSeq = 0;
 
-const FORMAT_SIZES = { doubles: 4, singles: 2 };
+const FORMAT_SIZES = { doubles: 4, singles: 2, threes: 3 };
+const FORMAT_LABELS = { doubles: 'Doubles', singles: 'Singles', threes: 'Threes' };
+
+// How many players one side of a court holds. "Threes" (three on a court
+// taking turns, e.g. squash) has no sides - all three sit in side 1.
+function sideCapacity(format, sideNum) {
+    if (format === 'threes') return sideNum === 1 ? 3 : 0;
+    return FORMAT_SIZES[format] / 2;
+}
 
 function $(sel) { return document.querySelector(sel); }
 
@@ -72,6 +80,16 @@ function renderHistoryGameRow(g) {
         .filter((p) => p.side === n)
         .map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillBadge(p.skill_level_at_time)}`)
         .join(' & ') || '<span class="muted">-</span>';
+    if (g.format === 'threes') {
+        // no sides, no "vs": just the three on the court
+        return `
+        <div class="history-game">
+            <span class="court-tag">Court ${g.court_number}</span>
+            <span class="team">${g.players.map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillBadge(p.skill_level_at_time)}`).join(' &middot; ')}</span>
+            <span class="muted">threes</span>
+        </div>
+    `;
+    }
     return `
         <div class="history-game">
             <span class="court-tag">Court ${g.court_number}</span>
@@ -517,7 +535,7 @@ async function renderRoundGamesPanel() {
         <div class="active-game-card">
             <h4>Court ${courtNumberFor(g.court_id)} <span class="muted">(${g.format})</span></h4>
             <div class="active-game-side">${sideLines(g, 1)}</div>
-            <div class="active-game-side">${sideLines(g, 2)}</div>
+            ${g.format === 'threes' ? '' : `<div class="active-game-side">${sideLines(g, 2)}</div>`}
         </div>
     `).join('') || `<p class="muted">${status === 'staged' ? 'Nothing staged for next round yet.' : 'No games recorded for this round.'}</p>`;
 }
@@ -648,12 +666,12 @@ function renderCourtCard(court) {
     const st = buildState[court.court_id];
     const isReadOnly = st.staged && !st.editing;
     const state = isReadOnly ? st.staged : st.draft;
-    const perSide = FORMAT_SIZES[state.format] / 2;
+    const unsided = state.format === 'threes';
 
     const sideHtml = (sideNum) => {
         const ids = sideNum === 1 ? state.side1 : state.side2;
         const slots = [];
-        for (let i = 0; i < perSide; i++) {
+        for (let i = 0; i < sideCapacity(state.format, sideNum); i++) {
             const playerId = ids[i];
             if (playerId !== undefined) {
                 // Flags anyone who sat out the previous round, same "rest
@@ -672,14 +690,14 @@ function renderCourtCard(court) {
         }
         return `
             <div class="side-box" data-court="${court.court_id}" data-side="${sideNum}">
-                <div class="side-label">Side ${sideNum}</div>
+                <div class="side-label">${unsided ? 'On court' : `Side ${sideNum}`}</div>
                 ${slots.join('')}
             </div>
         `;
     };
 
     const totalPlayers = state.side1.length + state.side2.length;
-    const expectedSize = perSide * 2;
+    const expectedSize = FORMAT_SIZES[state.format];
     const incomplete = totalPlayers > 0 && totalPlayers < expectedSize;
 
     let actions;
@@ -709,10 +727,11 @@ function renderCourtCard(court) {
                     : `<select data-action="format" data-court="${court.court_id}" ${st.staged ? '' : ''}>
                         <option value="doubles" ${state.format === 'doubles' ? 'selected' : ''}>Doubles</option>
                         <option value="singles" ${state.format === 'singles' ? 'selected' : ''}>Singles</option>
+                        <option value="threes" ${state.format === 'threes' ? 'selected' : ''}>Threes</option>
                     </select>`
                 }
             </div>
-            <div class="sides">${sideHtml(1)}${sideHtml(2)}</div>
+            <div class="sides ${unsided ? 'unsided' : ''}">${sideHtml(1)}${unsided ? '' : sideHtml(2)}</div>
             <div class="court-actions">${actions}</div>
         </div>
     `;
@@ -762,9 +781,13 @@ function wireCourtCardEvents() {
             const courtId = Number(sel.dataset.court);
             const st = buildState[courtId];
             st.draft.format = sel.value;
-            const perSide = FORMAT_SIZES[sel.value] / 2;
-            st.draft.side1 = st.draft.side1.slice(0, perSide);
-            st.draft.side2 = st.draft.side2.slice(0, perSide);
+            if (sel.value === 'threes') {
+                // no sides: everyone already placed moves into the one group
+                st.draft.side1 = [...st.draft.side1, ...st.draft.side2];
+                st.draft.side2 = [];
+            }
+            st.draft.side1 = st.draft.side1.slice(0, sideCapacity(sel.value, 1));
+            st.draft.side2 = st.draft.side2.slice(0, sideCapacity(sel.value, 2));
             renderBuilder();
         });
     });
@@ -804,12 +827,12 @@ function dropPlayer(courtId, side, playerId, fromCourt, fromSide) {
     const st = buildState[courtId];
     if (st.staged && !st.editing) return; // read-only until Edit is clicked
     const key = side === 1 ? 'side1' : 'side2';
-    const perSide = FORMAT_SIZES[st.draft.format] / 2;
+    const capacity = sideCapacity(st.draft.format, side);
 
     const side1WithoutPlayer = st.draft.side1.filter((id) => id !== playerId);
     const side2WithoutPlayer = st.draft.side2.filter((id) => id !== playerId);
     const targetArr = key === 'side1' ? side1WithoutPlayer : side2WithoutPlayer;
-    if (targetArr.length >= perSide) return; // target slot has no room - reject, nothing touched yet
+    if (targetArr.length >= capacity) return; // target slot has no room - reject, nothing touched yet
 
     if (fromCourt !== undefined && fromCourt !== courtId) removePlayerFromCourtDraft(fromCourt, fromSide, playerId);
     st.draft.side1 = side1WithoutPlayer;

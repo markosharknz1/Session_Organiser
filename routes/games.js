@@ -5,7 +5,10 @@ const { getNextRoundNumber } = require('../lib/roundLifecycle');
 
 const router = express.Router();
 
-const FORMAT_SIZES = { singles: 2, doubles: 4 };
+const FORMAT_SIZES = { singles: 2, doubles: 4, threes: 3 };
+// "Threes" - three on a court taking turns (e.g. squash, three in the box) -
+// has no sides. All three players are stored on side 1.
+const UNSIDED_FORMATS = new Set(['threes']);
 
 function gameWithPlayers(gameId) {
     const game = store.queryOne('SELECT * FROM games WHERE id = ?', [gameId]);
@@ -49,15 +52,22 @@ function validateLineup({ sessionId, courtId, roundNumber, format, players, excl
         errors.push(`${format} allows 1 to ${expectedSize} players while staging (needs all ${expectedSize} before the round can start)`);
         return errors;
     }
-    if (!players.every((p) => p.side === 1 || p.side === 2)) {
-        errors.push('every player must be assigned to side 1 or side 2');
-        return errors;
-    }
-    const perSide = expectedSize / 2;
-    const side1 = players.filter((p) => p.side === 1);
-    const side2 = players.filter((p) => p.side === 2);
-    if (side1.length > perSide || side2.length > perSide) {
-        errors.push(`each side holds at most ${perSide} player${perSide > 1 ? 's' : ''}`);
+    if (UNSIDED_FORMATS.has(format)) {
+        if (!players.every((p) => p.side === 1)) {
+            errors.push(`${format} has no sides - every player is recorded on side 1`);
+            return errors;
+        }
+    } else {
+        if (!players.every((p) => p.side === 1 || p.side === 2)) {
+            errors.push('every player must be assigned to side 1 or side 2');
+            return errors;
+        }
+        const perSide = expectedSize / 2;
+        const side1 = players.filter((p) => p.side === 1);
+        const side2 = players.filter((p) => p.side === 2);
+        if (side1.length > perSide || side2.length > perSide) {
+            errors.push(`each side holds at most ${perSide} player${perSide > 1 ? 's' : ''}`);
+        }
     }
     const playerIds = players.map((p) => p.player_id);
     if (new Set(playerIds).size !== playerIds.length) {

@@ -7,7 +7,7 @@ const router = express.Router();
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MODES = ['auto', 'manual', 'social'];
-const FORMATS = ['doubles', 'singles'];
+const FORMATS = ['doubles', 'singles', 'threes'];
 
 function dayOfWeekFor(dateStr) {
     const d = new Date(`${dateStr}T00:00:00`);
