@@ -70,24 +70,37 @@ function roundJustEnded(previousEndsAt) {
 const CUSTOM_HORN_MAX_SECONDS = 15;
 let clubHornVer = 0;
 let clubHornBuffer = null;
+let clubHornLoad = null; // the load in flight for clubHornVer, if any
 
+// Resolves true once the club's sound for this version is loaded and
+// playable. Two callers asking for the same version share one load (the
+// Settings page asks once for the upload it just made and again for the
+// 'club_settings' event that upload broadcasts).
 async function setClubHorn(clubSettings) {
     const ver = Number(clubSettings?.club_horn_ver) || 0;
-    if (ver === clubHornVer) return clubHornBuffer !== null;
+    if (ver === clubHornVer) return clubHornLoad ? clubHornLoad : clubHornBuffer !== null;
     clubHornVer = ver;
     clubHornBuffer = null;
+    clubHornLoad = null;
     if (ver <= 0) return false;
-    try {
-        const ctx = hornContext();
-        if (!ctx) return false;
-        const res = await fetch(`/api/branding/horn?v=${ver}`);
-        if (!res.ok) return false;
-        const decoded = await ctx.decodeAudioData(await res.arrayBuffer());
-        if (clubHornVer === ver) clubHornBuffer = decoded; // a newer upload may have landed meanwhile
-    } catch (err) {
-        clubHornBuffer = null; // unreadable file - the built-in horn still sounds
-    }
-    return clubHornBuffer !== null;
+    const load = (async () => {
+        try {
+            const ctx = hornContext();
+            if (!ctx) return false;
+            const res = await fetch(`/api/branding/horn?v=${ver}`);
+            if (!res.ok) return false;
+            const decoded = await ctx.decodeAudioData(await res.arrayBuffer());
+            if (clubHornVer !== ver) return false; // a newer upload landed meanwhile
+            clubHornBuffer = decoded;
+            return true;
+        } catch (err) {
+            return false; // unreadable file - the built-in horn still sounds
+        }
+    })();
+    clubHornLoad = load;
+    const ok = await load;
+    if (clubHornLoad === load) clubHornLoad = null;
+    return ok;
 }
 
 function usingClubHorn() {
