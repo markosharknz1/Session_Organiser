@@ -79,6 +79,24 @@ Open **Settings** (left menu):
 Players can be bulk-imported from a CSV on the Player Database page - there's a
 "Download CSV template" button with the exact columns.
 
+## Using more than one computer
+
+One computer runs Game Scheduler and keeps the club's data. A second computer
+(another check-in desk, or a TV for the External Display) opens that
+computer's app over the club's network - nothing is copied, and a check-in on
+one screen appears on the other straight away.
+
+1. On the main computer: **Settings > Club details > Other computers**, tick
+   *Allow other devices on this network*, save, and restart Game Scheduler.
+   That page then shows the computer's name to type in.
+2. On the other computer: get
+   [Game Scheduler Companion](https://github.com/markosharknz1/Session_Organiser_Companion)
+   (a small launcher, nothing to install) and enter that name.
+
+A phone or tablet on the same network can simply browse to
+`http://<main computer's name>:4000`. Never point two copies of Game Scheduler
+at the same database file - that loses data.
+
 ## Verifying a download
 
 Releases are packaged by GitHub Actions from the tagged source. Each release

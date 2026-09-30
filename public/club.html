@@ -44,6 +44,7 @@
             <button type="button" data-goto="club-date">Date format</button>
             <button type="button" data-goto="club-defaults">Game defaults</button>
             <button type="button" data-goto="club-sound">Round-end sound</button>
+            <button type="button" data-goto="club-network">Other computers</button>
             <button type="button" data-goto="payment-categories">Payment categories</button>
         </div>
         <button type="button" data-goto="about">About</button>
@@ -82,6 +83,7 @@
             <button type="button" data-goto="club-date">Date format</button>
             <button type="button" data-goto="club-defaults">Game defaults - game and changeover length, payment tracking, gender-aware pairing</button>
             <button type="button" data-goto="club-sound">Round-end sound - the built-in horn, or your own .wav file</button>
+            <button type="button" data-goto="club-network">Other computers - a second check-in computer, or the display on a TV</button>
             <button type="button" data-goto="payment-categories">Payment categories</button>
         </div>
     </section>
@@ -105,6 +107,28 @@
             </div>
         </div>
         <span class="save-note" id="icon-saved"></span>
+    </section>
+
+    <section class="panel" data-section="club-network">
+        <div class="settings-head"><h2>Other computers</h2></div>
+        <p class="muted" style="margin-top:0;">A second computer at the desk can check people in, and a TV or tablet can show the External Display, by opening <em>this</em> computer's Game Scheduler over the club's network. Everything stays in one place: this computer keeps the only copy of the club's data, and what is done on one screen shows on the others straight away.</p>
+        <div class="row">
+            <div class="field checkbox-row">
+                <input type="checkbox" id="cs-network">
+                <label for="cs-network">Allow other devices on this network to open Game Scheduler</label>
+            </div>
+        </div>
+        <button class="primary" id="cs-network-save">Save</button><span class="save-note" id="cs-network-saved"></span>
+        <p id="network-status" style="margin-top:16px;"></p>
+        <div id="network-connect" style="display:none;">
+            <h3 style="margin-bottom:6px;">Connecting another computer</h3>
+            <ol class="network-steps">
+                <li>Put <a class="textlink" id="network-companion-link" href="#" target="_blank" rel="noopener">Game Scheduler Companion</a> on the other computer - a small download with nothing to install.</li>
+                <li>Start it and, when it asks for the main computer, type: <strong id="network-name"></strong><span id="network-alt"></span></li>
+                <li>It opens the Check-in page in its own window and remembers this computer for next time.</li>
+            </ol>
+            <p class="muted">Both computers need to be on the same network, and Game Scheduler must be open on this one. The first time, Windows on this computer asks whether to let "Node.js JavaScript Runtime" through the firewall - click Allow. Anyone on the same network can open the app while this is on, so use it on the club's own network, not public wifi.</p>
+        </div>
     </section>
 
     <section class="panel" data-section="club-sound">
@@ -168,11 +192,6 @@
                 <label for="cs-gender-aware">Prefer mixed/same-gender doubles when auto-generating rounds (over a 3-1 gender split or segregated sides)</label>
             </div>
         </div>
-        <div class="row">
-            <div class="field checkbox-row">
-                <input type="checkbox" id="cs-network">
-                <label for="cs-network">Allow other devices on this network to open the app (e.g. the External Display on a TV over wifi). Takes effect the next time Game Scheduler starts; Windows will then ask whether to let "Node.js JavaScript Runtime" through the firewall - click Allow.</label>
-            </div>
         </div>
         <button class="primary" id="cs-defaults-save">Save</button><span class="save-note" id="cs-defaults-saved"></span>
     </section>

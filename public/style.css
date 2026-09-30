@@ -1130,6 +1130,8 @@ textarea {
     min-width: 150px;
 }
 .overview-session .price-box div { display: flex; justify-content: space-between; gap: 12px; }
+.network-steps { margin: 0 0 12px; padding-left: 22px; max-width: 640px; }
+.network-steps li { margin-bottom: 6px; }
 .about-list { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 0; max-width: 640px; }
 .about-list dt { color: var(--muted); font-weight: 600; }
 .about-list dd { margin: 0; }

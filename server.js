@@ -82,7 +82,7 @@ async function main() {
     });
 
     // This computer only (127.0.0.1) unless the club has turned on network
-    // access in Settings > Club details > Game defaults. Listening on every
+    // access in Settings > Club details > Other computers. Listening on every
     // interface is what makes Windows pop its "allow Node.js JavaScript
     // Runtime through the firewall" security alert the first time the app
     // runs - alarming on a club computer, and unnecessary unless the
@@ -91,6 +91,9 @@ async function main() {
     const club = store.queryOne('SELECT allow_network_access FROM club_settings WHERE id = 1');
     const allowNetwork = process.env.GAME_SCHEDULER_HOST ? process.env.GAME_SCHEDULER_HOST !== '127.0.0.1' : !!(club && club.allow_network_access);
     const host = process.env.GAME_SCHEDULER_HOST || (allowNetwork ? '0.0.0.0' : '127.0.0.1');
+    // Settings > Club details > Other computers reads this (routes/about.js)
+    // to say whether the choice is live yet or still waiting on a restart.
+    app.locals.listeningOnNetwork = allowNetwork;
     app.listen(PORT, host, () => {
         console.log(`Game Scheduler API listening on ${host}:${PORT}`);
         console.log(`  Local:   http://localhost:${PORT}`);
@@ -99,7 +102,7 @@ async function main() {
                 console.log(`  Network: http://${addr}:${PORT}`);
             }
         } else {
-            console.log('  Network: off (Settings > Club details > Game defaults to allow other devices)');
+            console.log('  Network: off (Settings > Club details > Other computers to allow other devices)');
         }
     });
 

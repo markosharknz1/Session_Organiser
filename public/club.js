@@ -60,7 +60,7 @@ function dollarsDisplay(cents) {
 // Left sidebar picks the window; Club details expands into its own
 // sub-items while it (or one of them) is showing.
 const FORMAT_LABELS = { doubles: 'Doubles', singles: 'Singles', threes: 'Threes (3 a court, no sides)' };
-const CLUB_DETAIL_SECTIONS = ['club-details', 'club-name', 'club-date', 'club-defaults', 'club-sound', 'payment-categories'];
+const CLUB_DETAIL_SECTIONS = ['club-details', 'club-name', 'club-date', 'club-defaults', 'club-sound', 'club-network', 'payment-categories'];
 
 function showSettingsSection(name) {
     document.querySelectorAll('[data-section]').forEach((el) => {
@@ -139,6 +139,7 @@ async function loadSettings() {
     setDateFormat(s.date_format);
     loadAbout(); // after the date format is known, so the release date shows in the club's format
     refreshSoundSettings(s);
+    loadNetworkInfo();
     $('#cs-name').value = s.club_name;
     $('#cs-date-format').value = s.date_format;
     $('#cs-game').value = s.default_game_minutes;
@@ -187,8 +188,34 @@ $('#cs-defaults-save').addEventListener('click', () => saveClubFields({
     default_break_minutes: Number($('#cs-break').value),
     square_enabled: $('#cs-square').checked,
     gender_aware_pairing: $('#cs-gender-aware').checked,
-    allow_network_access: $('#cs-network').checked,
 }, '#cs-defaults-saved'));
+
+// --- Other computers: let a second PC / TV open this computer's app ---
+$('#cs-network-save').addEventListener('click', async () => {
+    await saveClubFields({ allow_network_access: $('#cs-network').checked }, '#cs-network-saved');
+    loadNetworkInfo();
+});
+
+async function loadNetworkInfo() {
+    let n;
+    try { n = await api('/api/about/network'); } catch (err) { return; }
+    const status = $('#network-status');
+    if (n.allowed && n.listening) {
+        status.innerHTML = '<strong>On.</strong> Other computers on the same network can connect to this one.';
+    } else if (n.allowed && !n.listening) {
+        status.innerHTML = '<strong>Turned on - not active yet.</strong> Close Game Scheduler on this computer and open it again to apply.';
+    } else if (!n.allowed && n.listening) {
+        status.innerHTML = '<strong>Turned off - still active until Game Scheduler is restarted</strong> on this computer.';
+    } else {
+        status.innerHTML = '<strong>Off.</strong> Only this computer can open Game Scheduler.';
+    }
+    $('#network-connect').style.display = n.allowed ? '' : 'none';
+    $('#network-companion-link').href = n.companion_releases_url;
+    $('#network-name').textContent = n.computer_name;
+    $('#network-alt').textContent = n.addresses.length
+        ? ` (if that doesn't connect, use ${n.addresses.join(' or ')} instead)`
+        : '';
+}
 
 // --- Club icon (favicon, header logo, desktop shortcut icon) ---
 // Resizes client-side to a square 256x256 PNG (cover-crop, matching the

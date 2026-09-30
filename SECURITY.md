@@ -27,11 +27,16 @@ Gmail). Nothing is ever sent automatically.
 
 The server the app starts listens on port 4000 **on the computer itself only**
 (127.0.0.1) unless you turn on *Allow other devices on this network* in
-Settings > Club details > Game defaults - for opening the External Display on
-another device, such as a TV on the club wifi. Only then does Windows ask
-whether to let "Node.js JavaScript Runtime" through the firewall. The server
-has no authentication, so keep that to a club's own private network, never
-the public internet.
+Settings > Club details > Other computers. That is what lets a second
+computer check people in, or a TV show the External Display: they open this
+computer's Game Scheduler over the club network (the
+[Game Scheduler Companion](https://github.com/markosharknz1/Session_Organiser_Companion)
+is a small launcher for exactly that - it holds no data of its own). Only
+then does Windows ask whether to let "Node.js JavaScript Runtime" through the
+firewall. The server has no sign-in, so while this is on **anyone on the same
+network can open the app**, including Settings and the player list. Keep it
+to a club's own private network, never public or shared wifi, and turn it
+off if you don't need it.
 
 ## What's in the download, and what runs
 
