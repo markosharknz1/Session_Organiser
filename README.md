@@ -15,7 +15,7 @@
 > does.
 
 A local desktop app for running a club's social session on courts - any sport
-played as doubles or singles with a rotation of players: check players in,
+played as doubles, singles, or three on a court, with a rotation of players: check players in,
 take payments, put together the rounds (by hand or automatically, with skill
 grades and gender-aware pairing), run the round timer with a horn, show the
 courts on a TV, and keep the session's history and totals.
@@ -65,12 +65,14 @@ database (`game_scheduler.db`, the club's entire roster and history) is kept.
 Open **Settings** (left menu):
 
 - **Club details** - name and icon, date format, game/changeover lengths,
-  whether to track payments, and your payment categories (Member, Non-Member,
+  whether to track payments, the round-end sound (the built-in horn or your
+  own .wav file), and your payment categories (Member, Non-Member,
   Concession, ...). A fresh install has no categories; add your own.
 - **Courts** - which court numbers the venue has.
-- **Session templates** - your regular nights: day, time, mode, format
-  (doubles, or singles for a sport like squash - auto-generated rounds follow
-  it), courts, prices.
+- **Session templates** - your regular nights: day, time, mode, format,
+  courts, prices. The format is doubles (4 a court), singles (2 a court), or
+  threes (3 on a court with no sides, taking turns - common in squash);
+  auto-generated rounds follow it.
 - **Email** (optional) - SMTP2Go, Mailgun or Gmail for the end-of-night
   summary.
 
