@@ -276,6 +276,8 @@ async function refreshAll() {
 }
 
 function handleServerEvent(msg) {
+    // A new round-end sound was uploaded (or removed) in Settings.
+    if (msg.type === 'club_settings') api('/api/club-settings').then(setClubHorn).catch(() => {});
     if (!msg.type) return;
     if (msg.type === 'session') {
         checkSessionState().catch((err) => showError(err.message));
@@ -303,6 +305,7 @@ async function init() {
         const club = await api('/api/club-settings');
         $('#club-name').textContent = club.club_name;
         applyBranding(club);
+        setClubHorn(club);
         setDateFormat(club.date_format);
     } catch (err) {
         // non-fatal

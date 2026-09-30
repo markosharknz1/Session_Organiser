@@ -60,7 +60,7 @@ function dollarsDisplay(cents) {
 // Left sidebar picks the window; Club details expands into its own
 // sub-items while it (or one of them) is showing.
 const FORMAT_LABELS = { doubles: 'Doubles', singles: 'Singles', threes: 'Threes (3 a court, no sides)' };
-const CLUB_DETAIL_SECTIONS = ['club-details', 'club-name', 'club-date', 'club-defaults', 'payment-categories'];
+const CLUB_DETAIL_SECTIONS = ['club-details', 'club-name', 'club-date', 'club-defaults', 'club-sound', 'payment-categories'];
 
 function showSettingsSection(name) {
     document.querySelectorAll('[data-section]').forEach((el) => {
@@ -138,6 +138,7 @@ async function loadSettings() {
     applyBranding(s);
     setDateFormat(s.date_format);
     loadAbout(); // after the date format is known, so the release date shows in the club's format
+    refreshSoundSettings(s);
     $('#cs-name').value = s.club_name;
     $('#cs-date-format').value = s.date_format;
     $('#cs-game').value = s.default_game_minutes;
@@ -212,6 +213,67 @@ function resizeImageToPng(file, size) {
         img.src = URL.createObjectURL(file);
     });
 }
+
+// --- Round-end sound: the built-in horn, or the club's own .wav ---
+// horn.js (shared with the Rounds page and the Display screen) does the
+// loading and playing; this only uploads/removes the file and shows which
+// is in use.
+async function refreshSoundSettings(settings) {
+    const custom = (Number(settings.club_horn_ver) || 0) > 0;
+    $('#sound-status').textContent = custom ? 'Your own sound' : 'Built-in horn';
+    $('#sound-remove').style.display = custom ? '' : 'none';
+    const loaded = await setClubHorn(settings);
+    if (custom && !loaded) $('#sound-status').textContent = 'Your own sound (could not be read by this browser - the built-in horn will play instead)';
+}
+
+async function testSound(options) {
+    // The click itself is the user gesture the browser wants before audio.
+    await unlockHorn();
+    if (!playHorn(options)) showError('This browser is blocking sound - click anywhere on the page and try again.');
+    else showError('');
+}
+$('#sound-test').addEventListener('click', () => testSound());
+$('#sound-test-builtin').addEventListener('click', () => testSound({ builtIn: true }));
+
+$('#sound-file').addEventListener('change', async () => {
+    const file = $('#sound-file').files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+        showError('The sound must be 5MB or smaller - a few seconds is plenty.');
+        $('#sound-file').value = '';
+        return;
+    }
+    try {
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        const result = await api('/api/branding/horn', {
+            method: 'POST',
+            headers: { 'Content-Type': 'audio/wav' },
+            body: bytes,
+        });
+        clubSettings = { ...clubSettings, club_horn_ver: result.version };
+        await refreshSoundSettings(clubSettings);
+        showError('');
+        flashSaved('#sound-saved');
+        if (usingClubHorn()) testSound(); // let them hear what was just uploaded
+    } catch (err) {
+        showError(err.message);
+    } finally {
+        $('#sound-file').value = '';
+    }
+});
+
+$('#sound-remove').addEventListener('click', async () => {
+    if (!confirm('Go back to the built-in horn? Your uploaded sound is removed.')) return;
+    try {
+        const result = await api('/api/branding/horn', { method: 'DELETE' });
+        clubSettings = { ...clubSettings, club_horn_ver: result.version };
+        await refreshSoundSettings(clubSettings);
+        showError('');
+        flashSaved('#sound-saved');
+    } catch (err) {
+        showError(err.message);
+    }
+});
 
 $('#icon-file').addEventListener('change', async () => {
     const file = $('#icon-file').files[0];

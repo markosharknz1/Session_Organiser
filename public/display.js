@@ -192,6 +192,8 @@ subscribeToEvents((msg) => {
     if (['session', 'game', 'attendance', 'club_settings'].includes(msg.type)) {
         refresh();
     }
+    // A new round-end sound was uploaded (or removed) in Settings.
+    if (msg.type === 'club_settings') api('/api/club-settings').then(setClubHorn).catch(() => {});
 });
 
 countdownHandle = setInterval(() => {
@@ -206,4 +208,4 @@ startDisplayHornHeartbeat();
 refresh();
 // No club_name element on this page by design (see PROGRESS.md), but the
 // tab/window still gets the right favicon.
-api('/api/club-settings').then(applyBranding).catch(() => {});
+api('/api/club-settings').then((club) => { applyBranding(club); setClubHorn(club); }).catch(() => {});

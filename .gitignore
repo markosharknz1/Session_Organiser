@@ -16,3 +16,6 @@ __pycache__/
 .setup-complete
 # Written into the release ZIP by the workflow (Settings > About); never committed.
 build-info.json
+# A club's own uploads (Settings): custom icon and round-end sound.
+public/icons/club-icon.*
+public/sounds/

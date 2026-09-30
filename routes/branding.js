@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const store = require('../db/store');
+const { broadcast } = require('../lib/eventBus');
 
 const router = express.Router();
 
@@ -71,6 +72,68 @@ router.get('/icon', (req, res) => {
     const filePath = fs.existsSync(CUSTOM_PNG_PATH) ? CUSTOM_PNG_PATH : DEFAULT_PNG_PATH;
     res.set('Cache-Control', 'public, max-age=31536000, immutable');
     res.type('png').sendFile(filePath);
+});
+
+// --- The club's own round-end sound -----------------------------------------
+// A .wav the club uploads in Settings > Club details > Round-end sound,
+// played by the Display screen / Rounds page instead of the built-in horn
+// (public/horn.js). Kept as a plain file beside the custom icon; the
+// club_settings.club_horn_ver column says whether one is in use.
+const SOUND_DIR = path.join(__dirname, '..', 'public', 'sounds');
+const CUSTOM_HORN_PATH = path.join(SOUND_DIR, 'club-horn.wav');
+const MAX_HORN_BYTES = 5 * 1024 * 1024;
+
+function isWav(buf) {
+    return buf.length >= 44 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WAVE';
+}
+
+function setHornVersion(ver) {
+    store.run('UPDATE club_settings SET club_horn_ver = ? WHERE id = 1', [ver]);
+    store.persist();
+    // Every open Display / Rounds page reloads its sound straight away.
+    broadcast('club_settings', {});
+}
+
+router.post('/horn', express.raw({ type: () => true, limit: '25mb' }), (req, res) => {
+    const buf = req.body;
+    if (!Buffer.isBuffer(buf) || buf.length === 0) {
+        return res.status(400).json({ error: 'No file received.' });
+    }
+    if (buf.length > MAX_HORN_BYTES) {
+        return res.status(400).json({ error: 'The sound must be 5MB or smaller - a few seconds is plenty.' });
+    }
+    if (!isWav(buf)) {
+        return res.status(400).json({ error: 'The sound must be a .wav file.' });
+    }
+    try {
+        fs.mkdirSync(SOUND_DIR, { recursive: true });
+        fs.writeFileSync(CUSTOM_HORN_PATH, buf);
+        const existing = store.queryOne('SELECT club_horn_ver FROM club_settings WHERE id = 1');
+        const nextVer = Math.abs(existing?.club_horn_ver || 0) + 1;
+        setHornVersion(nextVer);
+        res.json({ ok: true, version: nextVer });
+    } catch (err) {
+        res.status(500).json({ error: `Could not save the sound: ${err.message}` });
+    }
+});
+
+router.get('/horn', (req, res) => {
+    if (!fs.existsSync(CUSTOM_HORN_PATH)) return res.status(404).json({ error: 'No custom sound uploaded.' });
+    res.set('Cache-Control', 'public, max-age=31536000, immutable'); // the URL carries ?v=<club_horn_ver>
+    res.type('audio/wav').sendFile(CUSTOM_HORN_PATH);
+});
+
+// Back to the built-in horn.
+router.delete('/horn', (req, res) => {
+    try {
+        if (fs.existsSync(CUSTOM_HORN_PATH)) fs.unlinkSync(CUSTOM_HORN_PATH);
+        const existing = store.queryOne('SELECT club_horn_ver FROM club_settings WHERE id = 1');
+        const ver = -Math.abs(existing?.club_horn_ver || 0);
+        setHornVersion(ver);
+        res.json({ ok: true, version: ver });
+    } catch (err) {
+        res.status(500).json({ error: `Could not remove the sound: ${err.message}` });
+    }
 });
 
 module.exports = router;

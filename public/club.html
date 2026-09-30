@@ -43,6 +43,7 @@
             <button type="button" data-goto="club-name">Club name &amp; icon</button>
             <button type="button" data-goto="club-date">Date format</button>
             <button type="button" data-goto="club-defaults">Game defaults</button>
+            <button type="button" data-goto="club-sound">Round-end sound</button>
             <button type="button" data-goto="payment-categories">Payment categories</button>
         </div>
         <button type="button" data-goto="about">About</button>
@@ -80,6 +81,7 @@
             <button type="button" data-goto="club-name">Club name &amp; icon</button>
             <button type="button" data-goto="club-date">Date format</button>
             <button type="button" data-goto="club-defaults">Game defaults - game and changeover length, payment tracking, gender-aware pairing</button>
+            <button type="button" data-goto="club-sound">Round-end sound - the built-in horn, or your own .wav file</button>
             <button type="button" data-goto="payment-categories">Payment categories</button>
         </div>
     </section>
@@ -103,6 +105,25 @@
             </div>
         </div>
         <span class="save-note" id="icon-saved"></span>
+    </section>
+
+    <section class="panel" data-section="club-sound">
+        <div class="settings-head"><h2>Round-end sound</h2></div>
+        <p class="muted" style="margin-top:0;">Played when a round's time is up - on the External Display if it's open, otherwise on the Rounds page.</p>
+        <p><strong>In use:</strong> <span id="sound-status">-</span></p>
+        <div class="row" style="align-items: flex-end;">
+            <div class="field">
+                <label>Upload your own sound</label>
+                <input type="file" id="sound-file" accept=".wav,audio/wav,audio/x-wav,audio/wave">
+                <p class="muted" style="margin: 4px 0 0;">A .wav file, up to 5MB. A few seconds works best - anything longer than 15 seconds is cut off.</p>
+            </div>
+        </div>
+        <div class="row" style="gap: 8px; margin-top: 12px;">
+            <button type="button" id="sound-test">Play current sound</button>
+            <button type="button" id="sound-test-builtin">Play built-in horn</button>
+            <button type="button" class="danger" id="sound-remove" style="display:none;">Go back to the built-in horn</button>
+        </div>
+        <span class="save-note" id="sound-saved"></span>
     </section>
 
     <section class="panel" data-section="club-date">
@@ -253,6 +274,7 @@
 <script src="/events.js"></script>
 <script src="/branding.js"></script>
 <script src="/dateFormat.js"></script>
+<script src="/horn.js"></script>
 <script src="/club.js"></script>
 <script src="/pwa.js"></script>
 </body>

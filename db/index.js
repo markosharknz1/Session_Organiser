@@ -236,6 +236,11 @@ function ensureColumns(db) {
         // cache-bust the favicon/logo without needing a live push.
         db.run(`ALTER TABLE club_settings ADD COLUMN club_icon_ver INTEGER NOT NULL DEFAULT 0`);
     }
+    if (!clubSettingsCols.includes('club_horn_ver')) {
+        // The club's own round-end sound: > 0 means a custom .wav is in use
+        // (see routes/branding.js and public/horn.js).
+        db.run(`ALTER TABLE club_settings ADD COLUMN club_horn_ver INTEGER NOT NULL DEFAULT 0`);
+    }
     if (!clubSettingsCols.includes('date_format')) {
         // Display-only preference (DMY/MDY/YMD) - see public/dateFormat.js.
         db.run(`ALTER TABLE club_settings ADD COLUMN date_format TEXT NOT NULL DEFAULT 'YMD' CHECK (date_format IN ('DMY','MDY','YMD'))`);

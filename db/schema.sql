@@ -192,6 +192,12 @@ CREATE TABLE IF NOT EXISTS club_settings (
     -- Bumped on every custom icon upload (routes/branding.js), for
     -- cache-busting the favicon/header logo without a live push.
     club_icon_ver INTEGER NOT NULL DEFAULT 0,
+    -- The club's own round-end sound (a .wav uploaded in Settings - see
+    -- routes/branding.js). Positive = a custom sound is in use, and the
+    -- number is its cache-busting version; 0 or negative = the built-in
+    -- horn (negative keeps the counter, so a later upload never reuses a
+    -- version a browser may still have cached).
+    club_horn_ver INTEGER NOT NULL DEFAULT 0,
     -- How dates are DISPLAYED throughout the app (DMY=DD/MM/YYYY,
     -- MDY=MM/DD/YYYY, YMD=YYYY-MM-DD) - purely cosmetic, every date is
     -- still stored/sent over the API as plain YYYY-MM-DD regardless. Native
