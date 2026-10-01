@@ -8,8 +8,15 @@ const router = express.Router();
 const DATE_FORMATS = ['DMY', 'MDY', 'YMD'];
 const EMAIL_PROVIDERS = ['smtp2go', 'mailgun', 'gmail'];
 
+// The PIN hash and the cookie secret stay on the server.
+function publicSettings(row) {
+    if (!row) return row;
+    const { access_pin_hash, access_secret, ...rest } = row;
+    return { ...rest, access_pin_set: !!access_pin_hash };
+}
+
 router.get('/', (req, res) => {
-    res.json(store.queryOne('SELECT * FROM club_settings WHERE id = 1'));
+    res.json(publicSettings(store.queryOne('SELECT * FROM club_settings WHERE id = 1')));
 });
 
 router.put('/', (req, res) => {
@@ -43,7 +50,7 @@ router.put('/', (req, res) => {
         );
         store.persist();
         broadcast('club_settings', {});
-        res.json(store.queryOne('SELECT * FROM club_settings WHERE id = 1'));
+        res.json(publicSettings(store.queryOne('SELECT * FROM club_settings WHERE id = 1')));
     } catch (err) {
         res.status(400).json({ error: err.message });
     }

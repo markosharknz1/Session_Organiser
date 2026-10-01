@@ -43,6 +43,7 @@ jobs:
           npm run report:test
           npm run roundbuilder:test
           npm run launcher:test
+          npm run access:test
           node --check launcher.js
 
       - name: Fetch the official Node.js runtime for Windows

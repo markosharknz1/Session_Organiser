@@ -120,14 +120,29 @@
         </div>
         <button class="primary" id="cs-network-save">Save</button><span class="save-note" id="cs-network-saved"></span>
         <p id="network-status" style="margin-top:16px;"></p>
+
+        <h3 style="margin-bottom:4px;">Access PIN</h3>
+        <p class="muted" style="margin-top:0;">Every other device has to enter this PIN once before it can open Game Scheduler; it then stays signed in. This computer is never asked. Other devices can't connect at all until a PIN is set.</p>
+        <p><strong>PIN:</strong> <span id="pin-status">-</span></p>
+        <div class="row" style="align-items: flex-end; max-width: 420px;">
+            <div class="field">
+                <label for="cs-pin" id="cs-pin-label">Set a PIN (4 to 8 digits)</label>
+                <input type="text" id="cs-pin" inputmode="numeric" maxlength="8" autocomplete="off" placeholder="e.g. 2468">
+            </div>
+            <div class="field" style="flex: 0 0 auto;">
+                <button class="primary" id="cs-pin-save">Save PIN</button>
+            </div>
+        </div>
+        <span class="save-note" id="cs-pin-saved"></span>
+        <p class="muted" style="margin-top:6px;">Changing the PIN signs every other device out; they'll be asked for the new one. <button type="button" class="small" id="cs-pin-revoke" style="margin-left:6px;">Sign out other devices now</button></p>
         <div id="network-connect" style="display:none;">
             <h3 style="margin-bottom:6px;">Connecting another computer</h3>
             <ol class="network-steps">
                 <li>Put <a class="textlink" id="network-companion-link" href="#" target="_blank" rel="noopener">Game Scheduler Companion</a> on the other computer - a small download with nothing to install.</li>
                 <li>Start it and, when it asks for the main computer, type: <strong id="network-name"></strong><span id="network-alt"></span></li>
-                <li>It opens the Check-in page in its own window and remembers this computer for next time.</li>
+                <li>It asks for the access PIN above (once), then opens the Check-in page in its own window and remembers this computer for next time.</li>
             </ol>
-            <p class="muted">Both computers need to be on the same network, and Game Scheduler must be open on this one. The first time, Windows on this computer asks whether to let "Node.js JavaScript Runtime" through the firewall - click Allow. Anyone on the same network can open the app while this is on, so use it on the club's own network, not public wifi.</p>
+            <p class="muted">Both computers need to be on the same network, and Game Scheduler must be open on this one. The first time, Windows on this computer asks whether to let "Node.js JavaScript Runtime" through the firewall - click Allow. Only devices that know the PIN can get in, but the connection isn't encrypted, so use it on the club's own network rather than public wifi.</p>
         </div>
     </section>
 

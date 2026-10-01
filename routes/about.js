@@ -43,7 +43,7 @@ router.get('/', (req, res) => {
 // server only binds to the network at start-up), and what to type into the
 // companion on the other computer.
 router.get('/network', (req, res) => {
-    const club = store.queryOne('SELECT allow_network_access FROM club_settings WHERE id = 1');
+    const club = store.queryOne('SELECT allow_network_access, access_pin_hash FROM club_settings WHERE id = 1');
     const addresses = [];
     const nets = os.networkInterfaces();
     for (const name of Object.keys(nets)) {
@@ -53,6 +53,7 @@ router.get('/network', (req, res) => {
     }
     res.json({
         allowed: !!(club && club.allow_network_access),
+        pin_set: !!(club && club.access_pin_hash),
         listening: !!req.app.locals.listeningOnNetwork,
         port: Number(process.env.PORT) || 4000,
         computer_name: os.hostname(),

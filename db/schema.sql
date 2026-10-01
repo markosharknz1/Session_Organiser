@@ -208,6 +208,11 @@ CREATE TABLE IF NOT EXISTS club_settings (
     -- club's network too, so the External Display can be opened on another
     -- device (a TV on the wifi). Read once, at server start - see server.js.
     allow_network_access INTEGER NOT NULL DEFAULT 0 CHECK (allow_network_access IN (0,1)),
+    -- Access PIN other devices must enter (lib/access.js): a salted scrypt
+    -- hash of the PIN, and a random per-install secret the devices' sign-in
+    -- cookies are derived from. Never returned by the API.
+    access_pin_hash TEXT,
+    access_secret TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

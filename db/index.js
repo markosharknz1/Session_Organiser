@@ -245,6 +245,10 @@ function ensureColumns(db) {
         // Display-only preference (DMY/MDY/YMD) - see public/dateFormat.js.
         db.run(`ALTER TABLE club_settings ADD COLUMN date_format TEXT NOT NULL DEFAULT 'YMD' CHECK (date_format IN ('DMY','MDY','YMD'))`);
     }
+    for (const col of ['access_pin_hash', 'access_secret']) {
+        // The access PIN for other devices - see lib/access.js.
+        if (!clubSettingsCols.includes(col)) db.run(`ALTER TABLE club_settings ADD COLUMN ${col} TEXT`);
+    }
     if (!clubSettingsCols.includes('allow_network_access')) {
         // Off by default: the server binds to 127.0.0.1 and Windows never
         // shows its "allow Node.js through the firewall" prompt. Clubs that

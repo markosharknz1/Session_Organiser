@@ -33,10 +33,16 @@ computer's Game Scheduler over the club network (the
 [Game Scheduler Companion](https://github.com/markosharknz1/Session_Organiser_Companion)
 is a small launcher for exactly that - it holds no data of its own). Only
 then does Windows ask whether to let "Node.js JavaScript Runtime" through the
-firewall. The server has no sign-in, so while this is on **anyone on the same
-network can open the app**, including Settings and the player list. Keep it
-to a club's own private network, never public or shared wifi, and turn it
-off if you don't need it.
+firewall.
+
+Every other device must enter the club's **access PIN** (set on the same
+Settings page) before it can open anything; it then stays signed in until
+the PIN is changed or "Sign out other devices" is used. With the network
+switch on but no PIN set, other devices are refused. Wrong guesses are
+throttled (five misses, then a wait that doubles). The main computer's own
+window is never asked. The PIN is stored only as a salted hash and is never
+sent to a device. The connection itself is not encrypted, so keep this to a
+club's own private network, never public or shared wifi.
 
 ## What's in the download, and what runs
 

@@ -19,6 +19,7 @@ jobs:
       - run: npm run report:test
       - run: npm run roundbuilder:test
       - run: npm run launcher:test
+      - run: npm run access:test
       - name: Launcher and server load
         run: |
           node --check launcher.js

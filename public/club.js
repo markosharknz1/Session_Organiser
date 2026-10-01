@@ -196,6 +196,31 @@ $('#cs-network-save').addEventListener('click', async () => {
     loadNetworkInfo();
 });
 
+$('#cs-pin-save').addEventListener('click', async () => {
+    const pin = $('#cs-pin').value.trim();
+    if (!/^\d{4,8}$/.test(pin)) { showError('The PIN must be 4 to 8 digits.'); return; }
+    try {
+        await api('/api/access/pin', { method: 'POST', body: JSON.stringify({ pin }) });
+        $('#cs-pin').value = '';
+        showError('');
+        flashSaved('#cs-pin-saved');
+        loadNetworkInfo();
+    } catch (err) {
+        showError(err.message);
+    }
+});
+
+$('#cs-pin-revoke').addEventListener('click', async () => {
+    if (!confirm('Sign out every other device? Each will be asked for the PIN again.')) return;
+    try {
+        await api('/api/access/revoke', { method: 'POST', body: '{}' });
+        showError('');
+        flashSaved('#cs-pin-saved');
+    } catch (err) {
+        showError(err.message);
+    }
+});
+
 async function loadNetworkInfo() {
     let n;
     try { n = await api('/api/about/network'); } catch (err) { return; }
@@ -209,6 +234,10 @@ async function loadNetworkInfo() {
     } else {
         status.innerHTML = '<strong>Off.</strong> Only this computer can open Game Scheduler.';
     }
+    if (n.allowed && !n.pin_set) status.innerHTML += ' <strong style="color:#b91c1c;">No access PIN is set, so other devices are refused - set one below.</strong>';
+    $('#pin-status').textContent = n.pin_set ? 'Set' : 'Not set';
+    $('#cs-pin-label').textContent = n.pin_set ? 'Change the PIN (4 to 8 digits)' : 'Set a PIN (4 to 8 digits)';
+    $('#cs-pin-revoke').style.display = n.pin_set ? '' : 'none';
     $('#network-connect').style.display = n.allowed ? '' : 'none';
     $('#network-companion-link').href = n.companion_releases_url;
     $('#network-name').textContent = n.computer_name;

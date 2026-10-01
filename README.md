@@ -87,8 +87,9 @@ computer's app over the club's network - nothing is copied, and a check-in on
 one screen appears on the other straight away.
 
 1. On the main computer: **Settings > Club details > Other computers**, tick
-   *Allow other devices on this network*, save, and restart Game Scheduler.
-   That page then shows the computer's name to type in.
+   *Allow other devices on this network*, set an **access PIN**, save, and
+   restart Game Scheduler. That page then shows the computer's name to type
+   in. Other devices enter the PIN once and stay signed in.
 2. On the other computer: get
    [Game Scheduler Companion](https://github.com/markosharknz1/Session_Organiser_Companion)
    (a small launcher, nothing to install) and enter that name.

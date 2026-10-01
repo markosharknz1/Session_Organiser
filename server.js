@@ -21,6 +21,8 @@ const backupRouter = require('./routes/backup');
 const brandingRouter = require('./routes/branding');
 const launcherRouter = require('./routes/launcher');
 const aboutRouter = require('./routes/about');
+const accessRouter = require('./routes/access');
+const { accessGuard } = require('./lib/access');
 const scheduler = require('./lib/scheduler');
 
 const PORT = process.env.PORT || 4000;
@@ -41,6 +43,12 @@ async function main() {
 
     const app = express();
     app.use(express.json());
+
+    // Any device other than this computer must have signed in with the
+    // club's access PIN (Settings > Club details > Other computers) - see
+    // lib/access.js. Sits ahead of every route and every static file.
+    app.use(accessGuard(() => store.queryOne('SELECT allow_network_access, access_pin_hash, access_secret FROM club_settings WHERE id = 1')));
+    app.use('/api/access', accessRouter);
 
     app.get('/api/health', (req, res) => res.json({ ok: true }));
 

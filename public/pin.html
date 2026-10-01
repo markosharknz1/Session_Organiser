@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in - Game Scheduler</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/api/branding/icon">
+<!-- Shown to a device other than the main computer before it may open the
+     app (see lib/access.js). Self-contained on purpose: nothing else is
+     served to a device that hasn't signed in yet. -->
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+         background: #f3f4f6; color: #1f2937; font: 16px/1.5 "Segoe UI", system-ui, sans-serif; }
+  .card { width: min(440px, 92vw); background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+          padding: 28px 32px 30px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); text-align: center; }
+  .club { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 6px; }
+  .club img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; }
+  h1 { font-size: 20px; margin: 0; }
+  p { margin: 8px 0 0; }
+  .muted { color: #6b7280; font-size: 14px; }
+  input { width: 100%; margin-top: 18px; font: inherit; font-size: 28px; letter-spacing: 0.4em; text-align: center;
+          padding: 10px 12px; border: 1px solid #9ca3af; border-radius: 10px; }
+  input:focus { outline: 2px solid #2563eb; border-color: #2563eb; }
+  button { margin-top: 14px; width: 100%; font: inherit; font-weight: 600; padding: 11px; border-radius: 10px;
+           border: 1px solid #2563eb; background: #2563eb; color: #fff; cursor: pointer; }
+  button:disabled { opacity: .55; cursor: default; }
+  .error { color: #b91c1c; font-size: 14px; margin-top: 12px; min-height: 20px; }
+  .notice { background: #fef3c7; border: 1px solid #f59e0b; border-radius: 10px; padding: 12px 14px; font-size: 14px; text-align: left; margin-top: 14px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="club"><img src="/api/branding/icon" alt=""><h1 id="club-name">Game Scheduler</h1></div>
+  <p class="muted">This device needs the club's access PIN. It's shown on the main computer under <b>Settings &gt; Club details &gt; Other computers</b>.</p>
+
+  <form id="form">
+    <input type="password" id="pin" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" placeholder="PIN" maxlength="8" required>
+    <button type="submit" id="go">Sign in</button>
+    <p class="error" id="error"></p>
+  </form>
+
+  <div class="notice" id="no-pin" hidden>
+    <b>No PIN has been set yet.</b> On the main computer, open Settings &gt; Club details &gt; Other computers and set an access PIN. Other devices can't connect until one exists.
+  </div>
+  <div class="notice" id="off" hidden>
+    <b>Other devices aren't allowed in at the moment.</b> On the main computer, tick "Allow other devices on this network" under Settings &gt; Club details &gt; Other computers, save, and restart Game Scheduler.
+  </div>
+  <p class="muted" style="margin-top:16px;">You'll stay signed in on this device until the PIN is changed.</p>
+</div>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var params = new URLSearchParams(location.search);
+  // Only ever go back to a page on this same server.
+  var next = params.get('next') || '/checkin.html';
+  if (!/^\/(?!\/)/.test(next)) next = '/checkin.html';
+
+  fetch('/api/access/info').then(function (r) { return r.json(); }).then(function (info) {
+    if (info.club_name) { $('club-name').textContent = info.club_name; document.title = 'Sign in - ' + info.club_name; }
+    if (!info.pin_set) { $('form').hidden = true; $('no-pin').hidden = false; }
+    if (!info.network_allowed) { $('form').hidden = true; $('off').hidden = false; }
+  }).catch(function () {});
+
+  $('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    $('go').disabled = true;
+    $('error').textContent = '';
+    fetch('/api/access/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: $('pin').value.trim() }) })
+      .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
+      .then(function (res) {
+        if (res.ok) { location.replace(next); return; }
+        $('error').textContent = res.body.error || 'Sign-in failed.';
+        $('pin').value = '';
+        $('pin').focus();
+        $('go').disabled = false;
+      })
+      .catch(function () { $('error').textContent = 'Could not reach the main computer.'; $('go').disabled = false; });
+  });
+  $('pin').focus();
+})();
+</script>
+</body>
+</html>
