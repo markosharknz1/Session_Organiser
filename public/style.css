@@ -1151,11 +1151,7 @@ textarea {
     gap: 20px;
     align-items: start;
 }
-@media (max-width: 800px) {
-    .settings-layout { grid-template-columns: 1fr; }
-    /* stacked above the content here - a sticky menu would cover it */
-    .settings-sidebar { position: static; }
-}
+@media (max-width: 800px) { .settings-layout { grid-template-columns: 1fr; } }
 .settings-sidebar {
     display: flex;
     flex-direction: column;
@@ -1187,6 +1183,10 @@ textarea {
 }
 .settings-subnav button { font-size: 0.9rem; }
 .settings-content { min-width: 0; }
+/* Narrow window: the menu is stacked above the content, so it must scroll
+   away with the page - left sticky, it sat on top of whatever was open.
+   (Placed after the .settings-sidebar rule above so it wins.) */
+@media (max-width: 800px) { .settings-sidebar { position: static; } }
 
 /* Every settings window opens the same way: its title at the top */
 .settings-head { margin-bottom: 8px; }
