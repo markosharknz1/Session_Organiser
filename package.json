@@ -1,6 +1,6 @@
 {
   "name": "game-scheduler",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "Club session organiser - check-in, court rounds, display screen",
   "private": true,
   "type": "commonjs",
