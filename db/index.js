@@ -391,6 +391,14 @@ function ensureThreesFormat(db) {
     }
 }
 
+// Names saved with spaces around them (an older quick-add, a hand-edited
+// import) sort to the wrong place. Trim them once; the players routes now
+// trim on save, so this stays a no-op afterwards.
+function trimPlayerNames(db) {
+    db.run(`UPDATE players SET first_name = TRIM(first_name), last_name = TRIM(last_name)
+            WHERE first_name != TRIM(first_name) OR last_name != TRIM(last_name)`);
+}
+
 // A plain-text explainer dropped once into the backup folder itself, so
 // it's findable by anyone who stumbles onto Documents\GameScheduler\backups
 // without already knowing what this app is or where to get it again -
@@ -489,6 +497,6 @@ function get(db, sql, params = []) {
 
 module.exports = {
     DB_PATH, SCHEMA_PATH, BACKUP_DIR, openDb, applySchema, saveDb, all, get,
-    ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, listBackups,
+    ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, trimPlayerNames, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, listBackups,
     todayLocalDateStr,
 };

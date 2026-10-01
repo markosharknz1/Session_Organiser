@@ -169,7 +169,17 @@ router.get('/:id/last-payment-category', (req, res) => {
     res.json(row || null);
 });
 
+// Leading/trailing spaces in a name sort it to the wrong place and make
+// two entries for one person - never store them.
+function trimNames(body) {
+    for (const key of ['first_name', 'last_name']) {
+        if (typeof body[key] === 'string') body[key] = body[key].trim();
+    }
+    return body;
+}
+
 router.post('/', (req, res) => {
+    trimNames(req.body);
     const errors = validatePlayer(req.body);
     if (errors.length) return res.status(400).json({ errors });
     const b = req.body;
@@ -192,6 +202,7 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
     const existing = store.queryOne('SELECT * FROM players WHERE id = ?', [req.params.id]);
     if (!existing) return res.status(404).json({ error: 'Player not found' });
+    trimNames(req.body);
     const errors = validatePlayer(req.body, { partial: true });
     if (errors.length) return res.status(400).json({ errors });
     const merged = { ...existing, ...req.body };

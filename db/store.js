@@ -2,7 +2,7 @@
 // Every mutating call persists to disk immediately (persist()) - this is a
 // single-writer local app, not a high-throughput server, so simplicity and
 // durability win over batching writes.
-const { openDb, applySchema, saveDb, ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, all, get } = require('./index');
+const { openDb, applySchema, saveDb, ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, trimPlayerNames, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, all, get } = require('./index');
 
 let db = null;
 
@@ -14,6 +14,7 @@ async function init() {
     ensureAttendanceBookedState(db); // table-rebuild migration: allows attendance.state = 'booked' (must run after ensureColumns)
     ensureSessionsPausedPhase(db); // table-rebuild migration: allows sessions.current_phase = 'paused' (must run after ensureColumns)
     ensureThreesFormat(db); // table-rebuild migration: allows format = 'threes' on templates, sessions and games (must run after the two above)
+    trimPlayerNames(db); // names stored with spaces around them sort to the wrong place
     markLegacyAdhocCategoriesSystem(db); // hide the old Cash/Card/Voucher categories from Settings, keep history intact
     backfillSportsVoucherMethod(db); // any Sports Voucher payment saved before this was tracked
     zeroVoucherAmounts(db); // a voucher redemption is never new money taken - zero any stale nonzero amount

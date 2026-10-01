@@ -616,7 +616,7 @@ function playerGender(playerId) {
 }
 
 function byLastName(a, b) {
-    return a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name);
+    return comparePlayersByName(a, b, 'last');
 }
 
 function poolPlayerHtml(p, rested) {

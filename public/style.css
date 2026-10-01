@@ -179,6 +179,11 @@ label { font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 
 
 .field { margin-bottom: 14px; }
 
+/* "Sort: Surname | First name" beside a list's search box */
+.name-sort { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--muted); margin: -6px 0 10px; }
+.name-sort button { font: inherit; font-size: 0.82rem; padding: 3px 10px; border: 1px solid var(--border); background: #fff; border-radius: 999px; cursor: pointer; color: var(--text, #1f2937); }
+.name-sort button.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+
 .row { display: flex; gap: 12px; flex-wrap: wrap; }
 .row > * { flex: 1; min-width: 140px; }
 

@@ -363,7 +363,7 @@ function renderAvailableTable() {
     }
     tbody.innerHTML = filtered
         .slice()
-        .sort((a, b) => a.last_name.localeCompare(b.last_name))
+        .sort(comparePlayersByName)
         .map((p) => `
             <tr data-player-id="${p.id}">
                 <td>${p.first_name} ${p.last_name}</td>
@@ -406,7 +406,7 @@ function renderHereTable() {
     }
     tbody.innerHTML = present
         .slice()
-        .sort((a, b) => a.last_name.localeCompare(b.last_name))
+        .sort(comparePlayersByName)
         .map((a) => `
             <tr data-attendance-id="${a.id}" data-player-id="${a.player_id}">
                 <td>${a.first_name} ${a.last_name} ${memberFlagBadges(a)}</td>
@@ -424,7 +424,7 @@ function renderBookedTable() {
     if (!booked.length) return;
     $('#booked-tbody').innerHTML = booked
         .slice()
-        .sort((a, b) => a.last_name.localeCompare(b.last_name))
+        .sort(comparePlayersByName)
         .map((a) => `
             <tr data-attendance-id="${a.id}" data-player-id="${a.player_id}">
                 <td>${a.first_name} ${a.last_name}</td>
@@ -487,6 +487,8 @@ async function removeFromToday(attendanceId, playerId) {
         showError(err.message);
     }
 }
+
+wireNameSortToggle($('#checkin-name-sort'), () => { renderAvailableTable(); renderHereTable(); renderBookedTable(); });
 
 $('#available-tbody').addEventListener('dblclick', (e) => {
     const tr = e.target.closest('tr[data-player-id]');

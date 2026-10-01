@@ -102,7 +102,7 @@ function renderMembers() {
     $('#member-count').textContent = allMembers.length;
 
     $('#members-tbody').innerHTML = filtered.length
-        ? filtered.slice().sort((a, b) => a.last_name.localeCompare(b.last_name))
+        ? filtered.slice().sort(comparePlayersByName)
             .map((p) => (p.id === editingMemberId ? memberRowEditHtml(p) : memberRowReadonlyHtml(p))).join('')
         : `<tr class="empty-row"><td colspan="6" class="muted">${query ? 'No matching members.' : 'No members yet.'}</td></tr>`;
 
@@ -391,3 +391,5 @@ async function init() {
 }
 
 init();
+
+wireNameSortToggle(document.getElementById('members-name-sort'), renderMembers);
