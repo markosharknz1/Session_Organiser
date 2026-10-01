@@ -42,7 +42,8 @@ const CONHOST = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', '
 // Live data that must never be copied over an existing install (so
 // installing into a folder that already has the app is an upgrade that
 // keeps the club's data), plus things that aren't part of the app.
-const NEVER_COPY = new Set(['game_scheduler.db', '.setup-complete', 'logs', 'exports', '.edge-app-profile', '.edge-setup-profile', '.git']);
+const NEVER_COPY = new Set(['game_scheduler.db', '.setup-complete', 'logs', 'exports', '.edge-app-profile', '.edge-setup-profile', '.git', 'Game Scheduler.lnk']);
+const SHORTCUT_NAME = 'Game Scheduler.lnk';
 
 function timestamp() {
     const d = new Date();
@@ -177,10 +178,9 @@ function unblockTree(dir) {
     return removed;
 }
 
-function createDesktopShortcut(appDir) {
-    const desktop = desktopFolder();
-    fs.mkdirSync(desktop, { recursive: true });
-    const lnk = path.join(desktop, 'Game Scheduler.lnk');
+// A shortcut that starts the app in appDir with no console window, written
+// to `lnk`. Same shortcut wherever it is put.
+function writeAppShortcut(lnk, appDir) {
     writeShellLink(lnk, {
         target: CONHOST,
         args: `--headless "${nodeFor(appDir)}" "${path.join(appDir, 'launcher.js')}"`,
@@ -189,6 +189,31 @@ function createDesktopShortcut(appDir) {
         description: 'Game Scheduler',
     });
     return lnk;
+}
+
+function createDesktopShortcut(appDir) {
+    const desktop = desktopFolder();
+    fs.mkdirSync(desktop, { recursive: true });
+    return writeAppShortcut(path.join(desktop, SHORTCUT_NAME), appDir);
+}
+
+// The app folder always holds its own "Game Scheduler" shortcut - the icon
+// to double-click when looking in the folder, and one that can be copied to
+// the taskbar, the Start menu or another desktop. Rewritten whenever it is
+// missing or the folder has moved (it stores the full path). Never fatal.
+function ensureFolderShortcut(appDir) {
+    try {
+        const lnk = path.join(appDir, SHORTCUT_NAME);
+        let current = null;
+        try { current = require('./lib/shellLink').readShellLink(fs.readFileSync(lnk)); } catch (e) { /* missing or unreadable */ }
+        if (current && current.workingDir === appDir && current.args && current.args.includes(nodeFor(appDir))) return lnk;
+        writeAppShortcut(lnk, appDir);
+        log(`Shortcut in the app folder: ${lnk}`);
+        return lnk;
+    } catch (e) {
+        log(`Could not create the shortcut in the app folder (non-fatal): ${e.message}`);
+        return null;
+    }
 }
 
 async function runInstall(dirText, wantShortcut) {
@@ -214,6 +239,7 @@ async function runInstall(dirText, wantShortcut) {
         if (init.status !== 0) return failSetup(`Could not set up the database.\n\n${(init.stderr || init.stdout || '').slice(0, 500)}`);
         done();
 
+        ensureFolderShortcut(appDir);
         if (wantShortcut) {
             step('Creating a desktop shortcut');
             try { log(`Shortcut: ${createDesktopShortcut(appDir)}`); done(); } catch (e) {
@@ -376,6 +402,7 @@ function stopServer(server) {
 async function runApp() {
     log('--- Game Scheduler launched ---');
     await ensureAppFiles();
+    ensureFolderShortcut(BASE_DIR);
     await ensureDatabase();
     const server = await startServer();
 

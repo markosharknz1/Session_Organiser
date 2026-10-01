@@ -19,3 +19,5 @@ build-info.json
 # A club's own uploads (Settings): custom icon and round-end sound.
 public/icons/club-icon.*
 public/sounds/
+# The launcher writes this into whatever folder it runs from.
+Game Scheduler.lnk

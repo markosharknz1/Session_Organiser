@@ -15,7 +15,8 @@
     "report:test": "node lib/sessionReport.test.js",
     "roundbuilder:test": "node public/roundBuilder.test.js",
     "launcher:test": "node lib/shellLink.test.js && node lib/installDir.test.js",
-    "access:test": "node lib/access.test.js"
+    "access:test": "node lib/access.test.js",
+    "html:test": "node lib/htmlStructure.test.js"
   },
   "dependencies": {
     "exceljs": "4.4.0",

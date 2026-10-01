@@ -1151,7 +1151,11 @@ textarea {
     gap: 20px;
     align-items: start;
 }
-@media (max-width: 800px) { .settings-layout { grid-template-columns: 1fr; } }
+@media (max-width: 800px) {
+    .settings-layout { grid-template-columns: 1fr; }
+    /* stacked above the content here - a sticky menu would cover it */
+    .settings-sidebar { position: static; }
+}
 .settings-sidebar {
     display: flex;
     flex-direction: column;
