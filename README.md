@@ -79,6 +79,19 @@ Open **Settings** (left menu):
 Players can be bulk-imported from a CSV on the Player Database page - there's a
 "Download CSV template" button with the exact columns.
 
+## Reports by email
+
+**History > Email a report** sends a tally to any address, for one session or
+a whole month: what was paid (by category and by cash/card/voucher), how many
+were pre-booked against how many arrived on the day, who left injured or
+early, and the list of players. It is sent with the default provider set up
+under Settings > Email, and the box shows exactly what will be sent before
+you send it.
+
+For those figures to be right on the night: use **Book** for players who say
+they are coming, and when someone leaves, double-click them on the Check-in
+page and pick *Left early*, *Left injured*, or *Checked in by mistake*.
+
 ## Using more than one computer
 
 One computer runs Game Scheduler and keeps the club's data. A second computer
