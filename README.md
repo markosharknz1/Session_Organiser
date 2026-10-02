@@ -90,7 +90,9 @@ you send it.
 
 For those figures to be right on the night: use **Book** for players who say
 they are coming, and when someone leaves, double-click them on the Check-in
-page and pick *Left early*, *Left injured*, or *Checked in by mistake*.
+page and pick *Left early*, *Left injured*, or *Checked in by mistake*. An
+injury can have a note of what happened; **History > Injury log** lists them
+all, and the notes can be added to later.
 
 ## Using more than one computer
 
@@ -100,9 +102,12 @@ computer's app over the club's network - nothing is copied, and a check-in on
 one screen appears on the other straight away.
 
 1. On the main computer: **Settings > Club details > Other computers**, tick
-   *Allow other devices on this network*, set an **access PIN**, save, and
-   restart Game Scheduler. That page then shows the computer's name to type
-   in. Other devices enter the PIN once and stay signed in.
+   *Allow other devices on this network*, set the PINs, save, and restart
+   Game Scheduler. That page then shows the computer's name to type in.
+   Other devices enter a PIN once and stay signed in. There are two:
+   the **check-in PIN** lets a device start the day's session, check players
+   in, take payments and show the External Display, and nothing else; the
+   **full access PIN** opens everything.
 2. On the other computer: get
    [Game Scheduler Companion](https://github.com/markosharknz1/Session_Organiser_Companion)
    (a small launcher, nothing to install) and enter that name.
@@ -110,6 +115,19 @@ one screen appears on the other straight away.
 A phone or tablet on the same network can simply browse to
 `http://<main computer's name>:4000`. Never point two copies of Game Scheduler
 at the same database file - that loses data.
+
+## Backups and restoring
+
+Every time the app opens it saves a backup to your Documents folder
+(GameScheduler, backups), keeping the newest 30. Each one holds the
+database and the club's own icon and round-end sound.
+
+To go back to a backup: **Player Database > Database backups > Restore**
+beside the one you want. The app shows what is in it, saves your current
+data as one more backup first (so a restore can be undone), and then puts
+the club back exactly as it was. **Restore from a file...** does the same
+from a database file kept elsewhere - which is also how to move the club to
+a new computer: install Game Scheduler there and restore the file.
 
 ## Verifying a download
 

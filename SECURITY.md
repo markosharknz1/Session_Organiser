@@ -35,9 +35,15 @@ is a small launcher for exactly that - it holds no data of its own). Only
 then does Windows ask whether to let "Node.js JavaScript Runtime" through the
 firewall.
 
-Every other device must enter the club's **access PIN** (set on the same
+Every other device must enter one of the club's **PINs** (set on the same
 Settings page) before it can open anything; it then stays signed in until
-the PIN is changed or "Sign out other devices" is used. With the network
+that PIN is changed or "Sign out other devices" is used. The **check-in
+PIN** limits a device to the Check-in page and the External Display - it
+can start the day's session, check players in and take payments, but the
+server refuses it everything else (Settings, the player database, history,
+exports, backups, rounds) and never sends it the club's email credentials.
+The **full access PIN** allows everything except managing the PINs and
+restoring a backup, which can only be done on the main computer itself. With the network
 switch on but no PIN set, other devices are refused. Wrong guesses are
 throttled (five misses, then a wait that doubles). The main computer's own
 window is never asked. The PIN is stored only as a salted hash and is never
