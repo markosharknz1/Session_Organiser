@@ -247,28 +247,60 @@
     <section class="panel" data-section="email">
         <div class="settings-head"><h2>Email</h2></div>
         <p class="muted">Connection details for sending the end-of-night summary. Staff click "Send summary" after finishing a session - nothing is ever sent automatically.</p>
-        <div class="field">
-            <label>Send via</label>
-            <select id="email-provider">
-                <option value="smtp2go">SMTP2Go</option>
-                <option value="mailgun">Mailgun</option>
-                <option value="gmail">Gmail</option>
-            </select>
-        </div>
+        <p class="email-default-line">Summaries are sent with: <strong id="email-default-name">-</strong> <span class="muted" id="email-default-warning"></span></p>
 
+        <div class="email-provider-tabs" id="email-provider-tabs" role="tablist">
+            <button type="button" data-provider="smtp2go">SMTP2Go <span class="default-flag">Default</span></button>
+            <button type="button" data-provider="mailgun">Mailgun <span class="default-flag">Default</span></button>
+            <button type="button" data-provider="gmail">Gmail <span class="default-flag">Default</span></button>
+        </div>
+        <p class="muted" style="margin:6px 0 12px;">You can fill in more than one provider. Only the one flagged <strong>Default</strong> is used to send.</p>
+
+        <div class="provider-info" data-provider-group="smtp2go">
+            <p><strong>SMTP2Go</strong> - <a class="textlink" href="https://www.smtp2go.com" target="_blank" rel="noopener">smtp2go.com</a></p>
+            <p>You will need:</p>
+            <ul>
+                <li>An SMTP2Go account.</li>
+                <li>The club's <strong>own domain name</strong>, such as <code>sportsclub.com</code>.</li>
+                <li><strong>Access to that domain's DNS settings</strong>, to add the records SMTP2Go gives you to verify the domain as a sender.</li>
+                <li>An API key from the SMTP2Go account, allowed to send email.</li>
+            </ul>
+            <p class="muted">The sender email below must be an address at the verified domain, for example <code>sessions@sportsclub.com</code>.</p>
+        </div>
         <div class="row" data-provider-group="smtp2go">
             <div class="field"><label>API key</label><input type="password" id="email-smtp2go-api-key" autocomplete="off"></div>
             <div class="field"><label>Sender email</label><input type="email" id="email-smtp2go-sender-address"></div>
             <div class="field"><label>Sender name</label><input type="text" id="email-smtp2go-sender-name"></div>
         </div>
 
+        <div class="provider-info" data-provider-group="mailgun" style="display:none;">
+            <p><strong>Mailgun</strong> - <a class="textlink" href="https://www.mailgun.com" target="_blank" rel="noopener">mailgun.com</a></p>
+            <p>You will need:</p>
+            <ul>
+                <li>A Mailgun account.</li>
+                <li>The club's <strong>own domain name</strong>, such as <code>sportsclub.com</code>.</li>
+                <li><strong>Access to that domain's DNS settings</strong>, to add the records Mailgun gives you to verify the sending domain (often a subdomain such as <code>mg.sportsclub.com</code>).</li>
+                <li>A sending API key from the Mailgun account.</li>
+            </ul>
+            <p class="muted">The sending domain must be in Mailgun's US region - that is the one this app sends through. The sender email should be an address at that domain.</p>
+        </div>
         <div class="row" data-provider-group="mailgun" style="display:none;">
             <div class="field"><label>API key</label><input type="password" id="email-mailgun-api-key" autocomplete="off"></div>
-            <div class="field"><label>Sending domain</label><input type="text" id="email-mailgun-domain" placeholder="e.g. mg.yourclub.org"></div>
+            <div class="field"><label>Sending domain</label><input type="text" id="email-mailgun-domain" placeholder="e.g. mg.sportsclub.com"></div>
             <div class="field"><label>Sender email</label><input type="email" id="email-mailgun-sender-address"></div>
             <div class="field"><label>Sender name</label><input type="text" id="email-mailgun-sender-name"></div>
         </div>
 
+        <div class="provider-info" data-provider-group="gmail" style="display:none;">
+            <p><strong>Gmail</strong> - <a class="textlink" href="https://mail.google.com" target="_blank" rel="noopener">gmail.com</a></p>
+            <p>You will need:</p>
+            <ul>
+                <li>A Gmail (Google) account for the club. <strong>No domain name or DNS changes are needed</strong> - the simplest choice for a club without its own domain.</li>
+                <li>2-Step Verification turned on for that account.</li>
+                <li>An App Password, created at <a class="textlink" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a>. This is not the account's normal password.</li>
+            </ul>
+            <p class="muted">Summaries arrive from that Gmail address.</p>
+        </div>
         <div class="row" data-provider-group="gmail" style="display:none;">
             <div class="field"><label>Gmail address</label><input type="email" id="email-gmail-user"></div>
             <div class="field">
@@ -276,9 +308,10 @@
                 <input type="password" id="email-gmail-app-password" autocomplete="off">
             </div>
         </div>
-        <p class="muted" data-provider-group="gmail" style="display:none; margin-top:-8px;">
-            Not your normal Gmail password - turn on 2-Step Verification on the Gmail account, then create an App Password at
-            <a class="textlink" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a> and paste it here.
+
+        <p class="email-make-default">
+            <button type="button" id="email-make-default">Make this the default</button>
+            <span class="muted" id="email-is-default" style="display:none;">This is the default provider.</span>
         </p>
 
         <div class="field">

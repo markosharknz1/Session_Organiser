@@ -148,7 +148,8 @@ async function loadSettings() {
     $('#cs-gender-aware').checked = !!s.gender_aware_pairing;
     $('#cs-network').checked = !!s.allow_network_access;
     $('#icon-preview').src = `/api/branding/icon?v=${s.club_icon_ver || 0}`;
-    $('#email-provider').value = s.email_provider || 'smtp2go';
+    emailDefaultProvider = s.email_provider || 'smtp2go';
+    if (!emailViewedProvider) emailViewedProvider = emailDefaultProvider;
     $('#email-smtp2go-api-key').value = s.smtp2go_api_key || '';
     $('#email-smtp2go-sender-address').value = s.smtp2go_sender_email || '';
     $('#email-smtp2go-sender-name').value = s.smtp2go_sender_name || '';
@@ -159,7 +160,7 @@ async function loadSettings() {
     $('#email-gmail-user').value = s.gmail_user || '';
     $('#email-gmail-app-password').value = s.gmail_app_password || '';
     $('#email-recipients').value = s.summary_recipient_emails || '';
-    showProviderFields($('#email-provider').value);
+    renderEmailProviders();
     $('#payments-access-token').value = s.square_access_token || '';
     $('#payments-location-id').value = s.square_location_id || '';
 }
@@ -359,20 +360,59 @@ $('#icon-file').addEventListener('change', async () => {
 });
 
 // --- Email (SMTP2Go / Mailgun / Gmail - sends the manual end-of-night summary) ---
-function showProviderFields(provider) {
-    document.querySelectorAll('[data-provider-group]').forEach((el) => {
-        el.style.display = el.dataset.providerGroup === provider ? '' : 'none';
-    });
+// A club can fill in more than one provider; exactly one is the DEFAULT -
+// the one summaries are actually sent with (club_settings.email_provider).
+// The tabs only choose which provider's details are on screen.
+const EMAIL_PROVIDER_LABELS = { smtp2go: 'SMTP2Go', mailgun: 'Mailgun', gmail: 'Gmail' };
+const EMAIL_PROVIDER_REQUIRED = {
+    smtp2go: ['#email-smtp2go-api-key', '#email-smtp2go-sender-address'],
+    mailgun: ['#email-mailgun-api-key', '#email-mailgun-domain', '#email-mailgun-sender-address'],
+    gmail: ['#email-gmail-user', '#email-gmail-app-password'],
+};
+let emailDefaultProvider = 'smtp2go';
+let emailViewedProvider = null;
+
+function emailProviderReady(provider) {
+    return EMAIL_PROVIDER_REQUIRED[provider].every((sel) => $(sel).value.trim() !== '');
 }
 
-$('#email-provider').addEventListener('change', () => showProviderFields($('#email-provider').value));
+function renderEmailProviders() {
+    const viewed = emailViewedProvider || emailDefaultProvider;
+    document.querySelectorAll('[data-provider-group]').forEach((el) => {
+        el.style.display = el.dataset.providerGroup === viewed ? '' : 'none';
+    });
+    document.querySelectorAll('#email-provider-tabs button[data-provider]').forEach((btn) => {
+        btn.classList.toggle('viewing', btn.dataset.provider === viewed);
+        btn.classList.toggle('is-default', btn.dataset.provider === emailDefaultProvider);
+    });
+    $('#email-default-name').textContent = EMAIL_PROVIDER_LABELS[emailDefaultProvider];
+    $('#email-default-warning').textContent = emailProviderReady(emailDefaultProvider) ? '' : '- not fully filled in yet, so nothing can be sent';
+    const isDefault = viewed === emailDefaultProvider;
+    $('#email-make-default').style.display = isDefault ? 'none' : '';
+    $('#email-make-default').textContent = `Make ${EMAIL_PROVIDER_LABELS[viewed]} the default`;
+    $('#email-is-default').style.display = isDefault ? '' : 'none';
+    $('#email-send-test').textContent = `Send test email (via ${EMAIL_PROVIDER_LABELS[emailDefaultProvider]})`;
+}
+
+document.querySelectorAll('#email-provider-tabs button[data-provider]').forEach((btn) => {
+    btn.addEventListener('click', () => { emailViewedProvider = btn.dataset.provider; renderEmailProviders(); });
+});
+document.querySelectorAll('[data-provider-group] input').forEach((input) => input.addEventListener('input', renderEmailProviders));
+
+// Flagging a provider as the default saves straight away (with whatever is
+// typed in the fields), so the flag on screen is always what is in effect.
+$('#email-make-default').addEventListener('click', () => {
+    emailDefaultProvider = emailViewedProvider || emailDefaultProvider;
+    renderEmailProviders();
+    $('#email-save').click();
+});
 
 $('#email-save').addEventListener('click', async () => {
     try {
         await api('/api/club-settings', {
             method: 'PUT',
             body: JSON.stringify({
-                email_provider: $('#email-provider').value,
+                email_provider: emailDefaultProvider,
                 smtp2go_api_key: $('#email-smtp2go-api-key').value.trim() || null,
                 smtp2go_sender_email: $('#email-smtp2go-sender-address').value.trim() || null,
                 smtp2go_sender_name: $('#email-smtp2go-sender-name').value.trim() || null,
