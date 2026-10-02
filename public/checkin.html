@@ -130,7 +130,7 @@
 
             <div class="panel">
                 <h2>Here today <span class="count-pill" id="here-count">0</span></h2>
-                <p class="muted table-hint" id="here-hint">Double-click a player to remove them from today.</p>
+                <p class="muted table-hint" id="here-hint">Double-click a player when they leave (left early, injured, or checked in by mistake).</p>
                 <div class="roster-table-wrap">
                     <table class="roster-table">
                         <thead><tr><th>Name</th><th>Skill</th><th>Status</th><th id="payment-th" style="display:none;">Payment</th></tr></thead>
@@ -152,6 +152,26 @@
         </div>
     </section>
 </main>
+
+<!-- Double-click (or right-click) a checked-in player: why are they leaving? -->
+<div id="leave-modal-backdrop" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+        <h3 style="margin: 0 0 12px;"><span id="lm-player-name"></span> is leaving</h3>
+        <div class="leave-options">
+            <label class="leave-option"><input type="radio" name="lm-reason" value="departed" checked>
+                <span><strong>Left early</strong><br><span class="muted">Still counts as having attended; their payment stays.</span></span></label>
+            <label class="leave-option"><input type="radio" name="lm-reason" value="injured">
+                <span><strong>Left injured</strong><br><span class="muted">Counts as attended, payment stays, and is listed as an injury in the reports.</span></span></label>
+            <label class="leave-option"><input type="radio" name="lm-reason" value="mistake">
+                <span><strong>Checked in by mistake</strong><br><span class="muted">Takes them off today's list as if they were never here, and removes their payment details.</span></span></label>
+        </div>
+        <p class="error-banner" id="lm-error" style="display:none;"></p>
+        <div class="row" style="justify-content: flex-end;">
+            <button id="lm-cancel">Cancel</button>
+            <button class="primary" id="lm-confirm">Confirm</button>
+        </div>
+    </div>
+</div>
 
 <div id="payment-modal-backdrop" class="modal-backdrop" style="display:none;">
     <div class="modal">

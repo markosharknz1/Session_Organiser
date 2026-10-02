@@ -395,6 +395,21 @@ function ensureThreesFormat(db) {
     }
 }
 
+// attendance.was_booked (see schema.sql). Added here rather than in
+// ensureColumns because it must run AFTER ensureAttendanceBookedState - that
+// rebuild copies a fixed column list and would drop it on a very old
+// database. On first run it is back-filled from what can still be known:
+// an entry that is still 'booked', or was a cancelled booking ('no-show' -
+// the only thing that reason meant before this), was pre-booked. Bookings
+// that had already been marked arrived can't be told apart from walk-ins,
+// so older sessions under-count "pre-booked and arrived".
+function ensureAttendanceWasBooked(db) {
+    const cols = all(db, `PRAGMA table_info(attendance)`).map((c) => c.name);
+    if (cols.includes('was_booked')) return;
+    db.run(`ALTER TABLE attendance ADD COLUMN was_booked INTEGER NOT NULL DEFAULT 0 CHECK (was_booked IN (0,1))`);
+    db.run(`UPDATE attendance SET was_booked = 1 WHERE state = 'booked' OR (state = 'left' AND left_reason = 'no-show')`);
+}
+
 // Names saved with spaces around them (an older quick-add, a hand-edited
 // import) sort to the wrong place. Trim them once; the players routes now
 // trim on save, so this stays a no-op afterwards.
@@ -501,6 +516,6 @@ function get(db, sql, params = []) {
 
 module.exports = {
     DB_PATH, SCHEMA_PATH, BACKUP_DIR, openDb, applySchema, saveDb, all, get,
-    ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, trimPlayerNames, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, listBackups,
+    ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, ensureAttendanceWasBooked, trimPlayerNames, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, listBackups,
     todayLocalDateStr,
 };

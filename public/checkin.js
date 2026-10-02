@@ -104,8 +104,8 @@ async function init() {
     }
     $('#payment-th').style.display = paymentTrackingEnabled ? '' : 'none';
     $('#here-hint').textContent = paymentTrackingEnabled
-        ? 'Double-click a player to remove them from today. Click the payment cell to record payment.'
-        : 'Double-click a player to remove them from today.';
+        ? 'Double-click a player when they leave (left early, injured, or checked in by mistake). Click the payment cell to record payment.'
+        : 'Double-click a player when they leave (left early, injured, or checked in by mistake).';
 
     await checkSessionState();
     mountTonightSummary($('#tonight-summary'), null, "Tonight's totals");
@@ -833,7 +833,51 @@ $('#here-tbody').addEventListener('dblclick', (e) => {
     if (e.target.closest('.payment-cell')) return; // payment editing lives on single-click, not removal
     const tr = e.target.closest('tr[data-attendance-id]');
     if (!tr) return;
-    removeFromToday(Number(tr.dataset.attendanceId), Number(tr.dataset.playerId));
+    openLeaveModal(Number(tr.dataset.attendanceId));
+});
+
+// --- A checked-in player is leaving: why? ---
+// Left early (the default) and Left injured keep them in tonight's count
+// with their payment; the reports name them. "Checked in by mistake" is
+// the undo: it clears the payment details and drops them from tonight
+// entirely (recorded with the same 'no-show' reason as a cancelled
+// booking, which every total already leaves out).
+let leaveModalAttendanceId = null;
+
+function openLeaveModal(attendanceId) {
+    const a = attendance.find((x) => x.id === attendanceId);
+    if (!a) return;
+    leaveModalAttendanceId = attendanceId;
+    $('#lm-player-name').textContent = `${a.first_name} ${a.last_name}`;
+    document.querySelector('input[name="lm-reason"][value="departed"]').checked = true;
+    $('#lm-error').style.display = 'none';
+    $('#leave-modal-backdrop').style.display = 'flex';
+    $('#lm-confirm').focus();
+}
+
+function closeLeaveModal() {
+    $('#leave-modal-backdrop').style.display = 'none';
+    leaveModalAttendanceId = null;
+}
+
+$('#lm-cancel').addEventListener('click', closeLeaveModal);
+$('#leave-modal-backdrop').addEventListener('click', (e) => { if (e.target.id === 'leave-modal-backdrop') closeLeaveModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && leaveModalAttendanceId !== null) closeLeaveModal(); });
+
+$('#lm-confirm').addEventListener('click', async () => {
+    if (leaveModalAttendanceId === null) return;
+    const reason = document.querySelector('input[name="lm-reason"]:checked').value;
+    const body = reason === 'mistake'
+        ? { state: 'left', left_reason: 'no-show', payment_category_id: null, payment_amount_cents: null, payment_method: null, payment_note: null, first_time: false, new_member: false }
+        : { state: 'left', left_reason: reason };
+    try {
+        await api(`/api/attendance/${leaveModalAttendanceId}`, { method: 'PUT', body: JSON.stringify(body) });
+        closeLeaveModal();
+        await refreshAttendance();
+    } catch (err) {
+        $('#lm-error').textContent = err.message;
+        $('#lm-error').style.display = 'block';
+    }
 });
 
 $('#here-tbody').addEventListener('click', (e) => {
@@ -898,7 +942,7 @@ $('#here-tbody').addEventListener('contextmenu', (e) => {
     if (paymentTrackingEnabled) {
         items.push({ label: a.payment_category_id ? 'Change payment...' : 'Record payment...', run: () => openPaymentModal(attendanceId) });
     }
-    items.push({ label: 'Remove from today', danger: true, run: () => removeFromToday(attendanceId, playerId) });
+    items.push({ label: 'Leaving / remove...', danger: true, run: () => openLeaveModal(attendanceId) });
     showRowMenu(e, `${a.first_name} ${a.last_name}`, items);
 });
 

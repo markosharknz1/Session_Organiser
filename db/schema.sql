@@ -126,7 +126,11 @@ CREATE TABLE IF NOT EXISTS attendance (
     payment_method TEXT CHECK (payment_method IN ('Cash','Card','Voucher')),
     payment_note TEXT,
     first_time INTEGER NOT NULL DEFAULT 0 CHECK (first_time IN (0,1)),
-    new_member INTEGER NOT NULL DEFAULT 0 CHECK (new_member IN (0,1))
+    new_member INTEGER NOT NULL DEFAULT 0 CHECK (new_member IN (0,1)),
+    -- 1 if this entry began as a booking ("coming, not here yet"). Kept when
+    -- the player is later marked arrived, so reports can tell pre-booked
+    -- arrivals from people who simply turned up.
+    was_booked INTEGER NOT NULL DEFAULT 0 CHECK (was_booked IN (0,1))
 );
 
 CREATE TABLE IF NOT EXISTS games (

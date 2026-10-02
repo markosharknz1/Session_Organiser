@@ -215,6 +215,7 @@ function localClockTime(dtStr) {
 async function openSession(sessionId) {
     try {
         const data = await api(`/api/history/sessions/${sessionId}`);
+        openedSessionId = sessionId;
         showView('session');
         $('#session-title').textContent = `${data.session.label || 'Session'} - ${formatDate(data.session.date)}`;
         mountTonightSummary($('#session-payment-summary'), sessionId);
@@ -411,9 +412,83 @@ $('#report-download').addEventListener('click', async () => {
 });
 
 // --- Boot ---
+// --- Email a report: one session's tally, or a whole month's ---
+// The preview shown here is the exact HTML that is emailed (built by
+// lib/tallyReport.js on the server, which escapes every name and note).
+const TALLY_TO_KEY = 'game-scheduler-tally-to';
+let tallyDefaultTo = '';
+
+function tallyTarget() {
+    return $('#tally-kind').value === 'month'
+        ? { path: `/api/tally/month/${$('#tally-month').value}`, ok: /^\d{4}-\d{2}$/.test($('#tally-month').value) }
+        : { path: `/api/tally/session/${$('#tally-session').value}`, ok: !!$('#tally-session').value };
+}
+
+async function loadTallyPreview() {
+    const isMonth = $('#tally-kind').value === 'month';
+    $('#tally-session-field').style.display = isMonth ? 'none' : '';
+    $('#tally-month-field').style.display = isMonth ? '' : 'none';
+    $('#tally-error').style.display = 'none';
+    $('#tally-result').textContent = '';
+    const target = tallyTarget();
+    $('#tally-send').disabled = true;
+    if (!target.ok) { $('#tally-preview').innerHTML = `<p class="muted">${isMonth ? 'Choose a month.' : 'There are no sessions yet.'}</p>`; return; }
+    try {
+        const report = await api(target.path);
+        $('#tally-preview').innerHTML = report.html;
+        $('#tally-send').disabled = false;
+    } catch (err) {
+        $('#tally-preview').innerHTML = `<p class="muted">${esc(err.message)}</p>`;
+    }
+}
+
+function openTallyModal(kind, sessionId) {
+    const newestFirst = allSessions.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id));
+    $('#tally-session').innerHTML = newestFirst.map((s) => `<option value="${s.id}">${esc(formatDate(s.date))} - ${esc(s.label || 'Session')}</option>`).join('');
+    if (sessionId) $('#tally-session').value = String(sessionId);
+    $('#tally-kind').value = kind;
+    $('#tally-month').value = `${calYear}-${pad2(calMonth)}`;
+    let remembered = '';
+    try { remembered = localStorage.getItem(TALLY_TO_KEY) || ''; } catch (e) { /* not remembered */ }
+    if (!$('#tally-to').value) $('#tally-to').value = remembered || tallyDefaultTo;
+    $('#tally-modal-backdrop').style.display = 'flex';
+    loadTallyPreview();
+}
+
+function closeTallyModal() { $('#tally-modal-backdrop').style.display = 'none'; }
+
+let openedSessionId = null;
+$('#tally-open').addEventListener('click', () => openTallyModal('session', null));
+$('#tally-open-session').addEventListener('click', () => openTallyModal('session', openedSessionId));
+$('#tally-close').addEventListener('click', closeTallyModal);
+$('#tally-modal-backdrop').addEventListener('click', (e) => { if (e.target.id === 'tally-modal-backdrop') closeTallyModal(); });
+['tally-kind', 'tally-session', 'tally-month'].forEach((id) => document.getElementById(id).addEventListener('change', loadTallyPreview));
+
+$('#tally-send').addEventListener('click', async () => {
+    const target = tallyTarget();
+    const to = $('#tally-to').value.trim();
+    $('#tally-error').style.display = 'none';
+    $('#tally-result').textContent = 'Sending...';
+    $('#tally-send').disabled = true;
+    try {
+        const res = await fetch(`${target.path}/email`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to }) });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(body?.error || `Request failed (${res.status})`);
+        $('#tally-result').textContent = `Sent to ${body.sent_to.join(', ')}`;
+        try { localStorage.setItem(TALLY_TO_KEY, to); } catch (e) { /* not remembered */ }
+    } catch (err) {
+        $('#tally-result').textContent = '';
+        $('#tally-error').textContent = err.message;
+        $('#tally-error').style.display = 'block';
+    } finally {
+        $('#tally-send').disabled = false;
+    }
+});
+
 async function init() {
     try {
         const club = await api('/api/club-settings');
+        tallyDefaultTo = club.summary_recipient_emails || '';
         $('#club-name').textContent = club.club_name;
         applyBranding(club);
         setDateFormat(club.date_format);

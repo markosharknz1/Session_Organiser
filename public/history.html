@@ -64,6 +64,14 @@
         </div>
 
         <div class="panel">
+            <h2>Email a report</h2>
+            <p class="muted">Send a tally to any email address: what was paid, who left injured or early, how many were pre-booked against how many arrived on the day, and the list of players. For one session, or a whole month.</p>
+            <div class="filter-bar">
+                <button class="primary" id="tally-open">Email a report...</button>
+            </div>
+        </div>
+
+        <div class="panel">
             <h2>Export session trend</h2>
             <p class="muted">Download one row per session as a real Excel file - headcount, rounds, membership breakdown, grade/gender/age of who played, and the full payment-category breakdown - to chart growth over time or reconcile funds. Uses the date range set below (leave blank for all sessions). Click into a session below to see its own player/payment totals.</p>
             <div class="filter-bar">
@@ -105,6 +113,9 @@
         <div class="panel">
             <h2 id="session-title"></h2>
             <div id="session-payment-summary"><p class="muted">Loading...</p></div>
+            <div class="filter-bar" style="margin-top:12px;">
+                <button id="tally-open-session">Email this session's tally...</button>
+            </div>
         </div>
         <div class="panel">
             <h2>Rounds</h2>
@@ -130,6 +141,41 @@
         </div>
     </section>
 </main>
+
+<div id="tally-modal-backdrop" class="modal-backdrop" style="display:none;">
+    <div class="modal modal-wide">
+        <h3 style="margin: 0 0 12px;">Email a report</h3>
+        <div class="row">
+            <div class="field">
+                <label for="tally-kind">Report</label>
+                <select id="tally-kind">
+                    <option value="session">One session</option>
+                    <option value="month">A whole month</option>
+                </select>
+            </div>
+            <div class="field" id="tally-session-field">
+                <label for="tally-session">Session</label>
+                <select id="tally-session"></select>
+            </div>
+            <div class="field" id="tally-month-field" style="display:none;">
+                <label for="tally-month">Month</label>
+                <input type="month" id="tally-month">
+            </div>
+        </div>
+        <div class="field">
+            <label for="tally-to">Send to</label>
+            <input type="text" id="tally-to" placeholder="e.g. treasurer@club.org" autocomplete="off">
+            <p class="muted" style="margin:4px 0 0;">Separate more than one address with commas. Sent with the default provider in Settings &gt; Email.</p>
+        </div>
+        <div class="tally-preview" id="tally-preview"><p class="muted">Loading...</p></div>
+        <p class="error-banner" id="tally-error" style="display:none;"></p>
+        <div class="row" style="justify-content: flex-end; align-items: center;">
+            <span class="save-note" id="tally-result"></span>
+            <button id="tally-close">Close</button>
+            <button class="primary" id="tally-send">Send email</button>
+        </div>
+    </div>
+</div>
 
 <script src="/events.js"></script>
 <script src="/branding.js"></script>

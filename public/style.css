@@ -1038,6 +1038,16 @@ textarea {
 .ctx-menu button.danger { color: var(--danger); }
 .ctx-menu button.danger:hover { background: #fee2e2; }
 
+/* Wider modal with a scrolling report preview (History > Email a report) */
+.modal.modal-wide { width: 860px; max-width: 94vw; max-height: 92vh; overflow-y: auto; }
+.tally-preview { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; max-height: 42vh; overflow: auto; background: #fff; margin-bottom: 12px; }
+
+/* Check-in: why is this player leaving? */
+.leave-options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.leave-option { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.leave-option:has(input:checked) { border-color: #2563eb; background: #eff6ff; }
+.leave-option input { margin-top: 4px; }
+
 .modal-backdrop {
     position: fixed;
     inset: 0;

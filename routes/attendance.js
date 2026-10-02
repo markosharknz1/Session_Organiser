@@ -94,10 +94,10 @@ router.post('/sessions/:sessionId/attendance', (req, res) => {
 
     try {
         const id = store.insert(
-            `INSERT INTO attendance (session_id, player_id, state, payment_category_id, payment_amount_cents, payment_method, payment_note, first_time, new_member)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO attendance (session_id, player_id, state, was_booked, payment_category_id, payment_amount_cents, payment_method, payment_note, first_time, new_member)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                sessionId, player_id, s,
+                sessionId, player_id, s, s === 'booked' ? 1 : 0,
                 paymentFields.payment_category_id ?? null,
                 paymentFields.payment_amount_cents ?? null,
                 paymentFields.payment_method ?? null,
