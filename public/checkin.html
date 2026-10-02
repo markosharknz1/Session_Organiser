@@ -165,6 +165,11 @@
             <label class="leave-option"><input type="radio" name="lm-reason" value="mistake">
                 <span><strong>Checked in by mistake</strong><br><span class="muted">Takes them off today's list as if they were never here, and removes their payment details.</span></span></label>
         </div>
+        <div class="field" id="lm-note-field" style="display:none;">
+            <label for="lm-note">What happened? (optional)</label>
+            <textarea id="lm-note" rows="3" placeholder="e.g. rolled ankle on court 3, ice applied, went home with a friend"></textarea>
+            <p class="muted" style="margin:4px 0 0;">Kept as the club's injury record - it appears in the emailed reports and in History's injury log, where it can be edited later.</p>
+        </div>
         <p class="error-banner" id="lm-error" style="display:none;"></p>
         <div class="row" style="justify-content: flex-end;">
             <button id="lm-cancel">Cancel</button>

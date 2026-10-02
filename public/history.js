@@ -412,6 +412,39 @@ $('#report-download').addEventListener('click', async () => {
 });
 
 // --- Boot ---
+// --- Injury log: everyone marked "Left injured", with the note ---
+async function loadInjuries() {
+    const rows = await api('/api/tally/injuries');
+    $('#injury-count').textContent = rows.length;
+    $('#injuries-tbody').innerHTML = rows.length
+        ? rows.map((r) => `
+            <tr>
+                <td>${esc(formatDate(r.date))}</td>
+                <td><a class="textlink" data-open-session="${r.session_id}">${esc(r.label || 'Session')}</a></td>
+                <td>${esc(r.first_name)} ${esc(r.last_name)}</td>
+                <td><a class="textlink injury-note" data-attendance-id="${r.attendance_id}" data-note="${esc(r.leave_note || '')}">${r.leave_note ? esc(r.leave_note) : '<span class="muted">Add a note...</span>'}</a></td>
+            </tr>`).join('')
+        : '<tr class="empty-row"><td colspan="4" class="muted">No injuries recorded.</td></tr>';
+}
+
+$('#injuries-tbody').addEventListener('click', async (e) => {
+    const open = e.target.closest('[data-open-session]');
+    if (open) { openSession(Number(open.dataset.openSession)); return; }
+    const link = e.target.closest('.injury-note');
+    if (!link) return;
+    const note = window.prompt('What happened?', link.dataset.note || '');
+    if (note === null) return; // cancelled
+    try {
+        const res = await fetch(`/api/attendance/${link.dataset.attendanceId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ leave_note: note.trim() || null }) });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(body?.error || `Request failed (${res.status})`);
+        showError('');
+        await loadInjuries();
+    } catch (err) {
+        showError(err.message);
+    }
+});
+
 // --- Email a report: one session's tally, or a whole month's ---
 // The preview shown here is the exact HTML that is emailed (built by
 // lib/tallyReport.js on the server, which escapes every name and note).
@@ -496,6 +529,7 @@ async function init() {
     try {
         await loadTemplateFilterOptions();
         await loadSessions();
+        await loadInjuries();
     } catch (err) {
         showError(err.message);
     }

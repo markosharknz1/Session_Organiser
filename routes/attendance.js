@@ -130,11 +130,12 @@ router.put('/attendance/:id', (req, res) => {
     applyPaymentDefaults(merged);
     try {
         store.run(
-            `UPDATE attendance SET state=?, left_reason=?, payment_category_id=?, payment_amount_cents=?, payment_method=?, payment_note=?, first_time=?, new_member=?
+            `UPDATE attendance SET state=?, left_reason=?, leave_note=?, payment_category_id=?, payment_amount_cents=?, payment_method=?, payment_note=?, first_time=?, new_member=?
              WHERE id=?`,
             [
                 merged.state,
                 merged.state === 'left' ? merged.left_reason : null,
+                merged.state === 'left' ? (String(merged.leave_note || '').trim() || null) : null,
                 merged.payment_category_id ?? null,
                 merged.payment_amount_cents ?? null,
                 merged.payment_method ?? null,

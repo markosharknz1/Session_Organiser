@@ -53,6 +53,18 @@ function send(kind) {
     };
 }
 
+// Every "left injured" entry, newest first - History's injury log.
+router.get('/injuries', (req, res) => {
+    res.json(store.query(
+        `SELECT a.id AS attendance_id, s.id AS session_id, s.date, s.label, p.first_name, p.last_name, a.leave_note
+         FROM attendance a
+         JOIN sessions s ON s.id = a.session_id
+         JOIN players p ON p.id = a.player_id
+         WHERE a.state = 'left' AND a.left_reason = 'injured'
+         ORDER BY s.date DESC, a.id DESC`
+    ));
+});
+
 router.get('/session/:key', preview('session'));
 router.get('/month/:key', preview('month'));
 router.post('/session/:key/email', send('session'));

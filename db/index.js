@@ -405,9 +405,12 @@ function ensureThreesFormat(db) {
 // so older sessions under-count "pre-booked and arrived".
 function ensureAttendanceWasBooked(db) {
     const cols = all(db, `PRAGMA table_info(attendance)`).map((c) => c.name);
-    if (cols.includes('was_booked')) return;
-    db.run(`ALTER TABLE attendance ADD COLUMN was_booked INTEGER NOT NULL DEFAULT 0 CHECK (was_booked IN (0,1))`);
-    db.run(`UPDATE attendance SET was_booked = 1 WHERE state = 'booked' OR (state = 'left' AND left_reason = 'no-show')`);
+    if (!cols.includes('was_booked')) {
+        db.run(`ALTER TABLE attendance ADD COLUMN was_booked INTEGER NOT NULL DEFAULT 0 CHECK (was_booked IN (0,1))`);
+        db.run(`UPDATE attendance SET was_booked = 1 WHERE state = 'booked' OR (state = 'left' AND left_reason = 'no-show')`);
+    }
+    // The injury note (same reason for living here: after the rebuild).
+    if (!cols.includes('leave_note')) db.run(`ALTER TABLE attendance ADD COLUMN leave_note TEXT`);
 }
 
 // Names saved with spaces around them (an older quick-add, a hand-edited

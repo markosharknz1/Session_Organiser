@@ -130,7 +130,11 @@ CREATE TABLE IF NOT EXISTS attendance (
     -- 1 if this entry began as a booking ("coming, not here yet"). Kept when
     -- the player is later marked arrived, so reports can tell pre-booked
     -- arrivals from people who simply turned up.
-    was_booked INTEGER NOT NULL DEFAULT 0 CHECK (was_booked IN (0,1))
+    was_booked INTEGER NOT NULL DEFAULT 0 CHECK (was_booked IN (0,1)),
+    -- Free text recorded when a player leaves - in practice the injury note
+    -- ("rolled ankle on court 3, ice applied, went home"). Shown in the
+    -- tally reports and History's injury log.
+    leave_note TEXT
 );
 
 CREATE TABLE IF NOT EXISTS games (

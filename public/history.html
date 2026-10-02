@@ -72,6 +72,17 @@
         </div>
 
         <div class="panel">
+            <h2>Injury log <span class="count-pill" id="injury-count">0</span></h2>
+            <p class="muted">Everyone marked "Left injured" on the Check-in page, newest first, with the note taken at the time. Click a note to add to it or correct it.</p>
+            <div class="roster-table-wrap">
+                <table class="history-table" id="injuries-table">
+                    <thead><tr><th>Date</th><th>Session</th><th>Player</th><th>What happened</th></tr></thead>
+                    <tbody id="injuries-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel">
             <h2>Export session trend</h2>
             <p class="muted">Download one row per session as a real Excel file - headcount, rounds, membership breakdown, grade/gender/age of who played, and the full payment-category breakdown - to chart growth over time or reconcile funds. Uses the date range set below (leave blank for all sessions). Click into a session below to see its own player/payment totals.</p>
             <div class="filter-bar">

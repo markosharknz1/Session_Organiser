@@ -850,6 +850,8 @@ function openLeaveModal(attendanceId) {
     leaveModalAttendanceId = attendanceId;
     $('#lm-player-name').textContent = `${a.first_name} ${a.last_name}`;
     document.querySelector('input[name="lm-reason"][value="departed"]').checked = true;
+    $('#lm-note').value = '';
+    $('#lm-note-field').style.display = 'none';
     $('#lm-error').style.display = 'none';
     $('#leave-modal-backdrop').style.display = 'flex';
     $('#lm-confirm').focus();
@@ -860,6 +862,13 @@ function closeLeaveModal() {
     leaveModalAttendanceId = null;
 }
 
+// The injury note box only shows for "Left injured".
+document.querySelectorAll('input[name="lm-reason"]').forEach((radio) => radio.addEventListener('change', () => {
+    const injured = document.querySelector('input[name="lm-reason"]:checked').value === 'injured';
+    $('#lm-note-field').style.display = injured ? '' : 'none';
+    if (injured) $('#lm-note').focus();
+}));
+
 $('#lm-cancel').addEventListener('click', closeLeaveModal);
 $('#leave-modal-backdrop').addEventListener('click', (e) => { if (e.target.id === 'leave-modal-backdrop') closeLeaveModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && leaveModalAttendanceId !== null) closeLeaveModal(); });
@@ -869,7 +878,7 @@ $('#lm-confirm').addEventListener('click', async () => {
     const reason = document.querySelector('input[name="lm-reason"]:checked').value;
     const body = reason === 'mistake'
         ? { state: 'left', left_reason: 'no-show', payment_category_id: null, payment_amount_cents: null, payment_method: null, payment_note: null, first_time: false, new_member: false }
-        : { state: 'left', left_reason: reason };
+        : { state: 'left', left_reason: reason, leave_note: reason === 'injured' ? $('#lm-note').value.trim() || null : null };
     try {
         await api(`/api/attendance/${leaveModalAttendanceId}`, { method: 'PUT', body: JSON.stringify(body) });
         closeLeaveModal();
