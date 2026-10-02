@@ -221,6 +221,9 @@ CREATE TABLE IF NOT EXISTS club_settings (
     -- cookies are derived from. Never returned by the API.
     access_pin_hash TEXT,
     access_secret TEXT,
+    -- A second, optional PIN for the check-in desk only (start the session,
+    -- check in, payments, the display - no Settings/history/players).
+    desk_pin_hash TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

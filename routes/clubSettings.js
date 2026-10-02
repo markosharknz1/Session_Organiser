@@ -8,15 +8,19 @@ const router = express.Router();
 const DATE_FORMATS = ['DMY', 'MDY', 'YMD'];
 const EMAIL_PROVIDERS = ['smtp2go', 'mailgun', 'gmail'];
 
-// The PIN hash and the cookie secret stay on the server.
-function publicSettings(row) {
+// The PIN hashes and the cookie secret stay on the server. A device signed
+// in with the check-in PIN also gets no credentials - the Check-in page
+// only needs the club name, date format and whether payments are tracked.
+const CREDENTIAL_FIELDS = ['smtp2go_api_key', 'mailgun_api_key', 'gmail_user', 'gmail_app_password', 'square_access_token', 'square_location_id', 'summary_recipient_emails'];
+function publicSettings(row, role = 'admin') {
     if (!row) return row;
-    const { access_pin_hash, access_secret, ...rest } = row;
-    return { ...rest, access_pin_set: !!access_pin_hash };
+    const { access_pin_hash, desk_pin_hash, access_secret, ...rest } = row;
+    if (role !== 'admin') for (const f of CREDENTIAL_FIELDS) delete rest[f];
+    return { ...rest, access_pin_set: !!access_pin_hash, desk_pin_set: !!desk_pin_hash };
 }
 
 router.get('/', (req, res) => {
-    res.json(publicSettings(store.queryOne('SELECT * FROM club_settings WHERE id = 1')));
+    res.json(publicSettings(store.queryOne('SELECT * FROM club_settings WHERE id = 1'), req.accessRole));
 });
 
 router.put('/', (req, res) => {

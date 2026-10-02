@@ -197,12 +197,25 @@ $('#cs-network-save').addEventListener('click', async () => {
     loadNetworkInfo();
 });
 
-$('#cs-pin-save').addEventListener('click', async () => {
-    const pin = $('#cs-pin').value.trim();
+async function savePin(inputSel, role) {
+    const pin = $(inputSel).value.trim();
     if (!/^\d{4,8}$/.test(pin)) { showError('The PIN must be 4 to 8 digits.'); return; }
     try {
-        await api('/api/access/pin', { method: 'POST', body: JSON.stringify({ pin }) });
-        $('#cs-pin').value = '';
+        await api('/api/access/pin', { method: 'POST', body: JSON.stringify({ pin, role }) });
+        $(inputSel).value = '';
+        showError('');
+        flashSaved('#cs-pin-saved');
+        loadNetworkInfo();
+    } catch (err) {
+        showError(err.message);
+    }
+}
+$('#cs-pin-save').addEventListener('click', () => savePin('#cs-pin', 'admin'));
+$('#cs-desk-pin-save').addEventListener('click', () => savePin('#cs-desk-pin', 'desk'));
+$('#cs-desk-pin-remove').addEventListener('click', async () => {
+    if (!confirm('Remove the check-in PIN? Devices signed in with it will be signed out.')) return;
+    try {
+        await api('/api/access/pin', { method: 'POST', body: JSON.stringify({ pin: '', role: 'desk' }) });
         showError('');
         flashSaved('#cs-pin-saved');
         loadNetworkInfo();
@@ -235,10 +248,13 @@ async function loadNetworkInfo() {
     } else {
         status.innerHTML = '<strong>Off.</strong> Only this computer can open Game Scheduler.';
     }
-    if (n.allowed && !n.pin_set) status.innerHTML += ' <strong style="color:#b91c1c;">No access PIN is set, so other devices are refused - set one below.</strong>';
+    if (n.allowed && !n.pin_set && !n.desk_pin_set) status.innerHTML += ' <strong style="color:#b91c1c;">No PIN is set, so other devices are refused - set one below.</strong>';
     $('#pin-status').textContent = n.pin_set ? 'Set' : 'Not set';
     $('#cs-pin-label').textContent = n.pin_set ? 'Change the PIN (4 to 8 digits)' : 'Set a PIN (4 to 8 digits)';
-    $('#cs-pin-revoke').style.display = n.pin_set ? '' : 'none';
+    $('#desk-pin-status').textContent = n.desk_pin_set ? 'Set' : 'Not set';
+    $('#cs-desk-pin-label').textContent = n.desk_pin_set ? 'Change the check-in PIN (4 to 8 digits)' : 'Set a check-in PIN (4 to 8 digits)';
+    $('#cs-desk-pin-remove').style.display = n.desk_pin_set ? '' : 'none';
+    $('#cs-pin-revoke').style.display = n.pin_set || n.desk_pin_set ? '' : 'none';
     $('#network-connect').style.display = n.allowed ? '' : 'none';
     $('#network-companion-link').href = n.companion_releases_url;
     $('#network-name').textContent = n.computer_name;

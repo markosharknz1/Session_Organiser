@@ -8,6 +8,14 @@ if ('serviceWorker' in navigator) {
     });
 }
 
+// A device signed in with the check-in PIN (see lib/access.js) can only use
+// the Check-in page and the External Display. Mark the page so the links and
+// buttons it can't use are hidden (style.css, .role-desk) rather than
+// leading to a refusal. The server enforces it either way.
+fetch('/api/access/info').then((r) => r.json()).then((info) => {
+    if (info.role === 'desk') document.documentElement.classList.add('role-desk');
+}).catch(() => {});
+
 function isStandalone() {
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }

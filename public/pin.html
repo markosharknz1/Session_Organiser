@@ -34,7 +34,7 @@
 <body>
 <div class="card">
   <div class="club"><img src="/api/branding/icon" alt=""><h1 id="club-name">Game Scheduler</h1></div>
-  <p class="muted">This device needs the club's access PIN. It's shown on the main computer under <b>Settings &gt; Club details &gt; Other computers</b>.</p>
+  <p class="muted">This device needs one of the club's access PINs - they are set on the main computer under <b>Settings &gt; Club details &gt; Other computers</b>.</p>
 
   <form id="form">
     <input type="password" id="pin" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" placeholder="PIN" maxlength="8" required>
@@ -71,7 +71,12 @@
     fetch('/api/access/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin: $('pin').value.trim() }) })
       .then(function (r) { return r.json().then(function (b) { return { ok: r.ok, body: b }; }); })
       .then(function (res) {
-        if (res.ok) { location.replace(next); return; }
+        if (res.ok) {
+          // A check-in-only device has two pages: Check-in and the display.
+          var deskPages = ['/checkin.html', '/display.html'];
+          location.replace(res.body.role === 'desk' && deskPages.indexOf(next.split('?')[0]) === -1 ? '/checkin.html' : next);
+          return;
+        }
         $('error').textContent = res.body.error || 'Sign-in failed.';
         $('pin').value = '';
         $('pin').focus();

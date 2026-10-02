@@ -245,7 +245,7 @@ function ensureColumns(db) {
         // Display-only preference (DMY/MDY/YMD) - see public/dateFormat.js.
         db.run(`ALTER TABLE club_settings ADD COLUMN date_format TEXT NOT NULL DEFAULT 'YMD' CHECK (date_format IN ('DMY','MDY','YMD'))`);
     }
-    for (const col of ['access_pin_hash', 'access_secret']) {
+    for (const col of ['access_pin_hash', 'access_secret', 'desk_pin_hash']) {
         // The access PIN for other devices - see lib/access.js.
         if (!clubSettingsCols.includes(col)) db.run(`ALTER TABLE club_settings ADD COLUMN ${col} TEXT`);
     }

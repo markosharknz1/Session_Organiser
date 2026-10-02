@@ -1003,6 +1003,12 @@ textarea {
 .breadcrumb a:hover { text-decoration: underline; }
 
 /* --- Modal (payment recording) --- */
+/* A device signed in with the check-in-only PIN: no other pages, and the
+   session can't be finished or switched between modes from here. */
+.role-desk .app-nav a:not([href="/checkin.html"]),
+.role-desk #finish-session-btn,
+.role-desk #session-mode-select { display: none !important; }
+
 /* Right-click menu on a check-in row: "Change payment", "Remove from today" */
 .ctx-menu {
     position: fixed;
@@ -1158,6 +1164,7 @@ textarea {
     min-width: 150px;
 }
 .overview-session .price-box div { display: flex; justify-content: space-between; gap: 12px; }
+.pin-block { border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin: 0 0 12px; max-width: 760px; }
 .network-steps { margin: 0 0 12px; padding-left: 22px; max-width: 640px; }
 .network-steps li { margin-bottom: 6px; }
 .about-list { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 0; max-width: 640px; }
