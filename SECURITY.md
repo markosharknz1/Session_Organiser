@@ -10,7 +10,9 @@ what it does and doesn't do, so you can judge that for yourself.
   `game_scheduler.db` (an SQLite database) in the folder you run the app from.
   Nothing is stored anywhere else, and nothing is sent anywhere.
 - **Backups.** Each time the app opens it copies that file to
-  `Documents\GameScheduler\backups` on the same computer (newest 30 kept).
+  `Documents\GameScheduler\backups` on the same computer (newest 30 kept). Each
+  backup also holds the club's own icon and round-end sound, and can be
+  restored from inside the app (Player Database > Database backups).
 - **Not encrypted.** The database holds personal details - names, dates of
   birth, contact details, and any email credentials you enter in Settings - in
   plain form. Treat the computer and its backups the way you'd treat a
