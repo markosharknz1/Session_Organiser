@@ -1,12 +1,26 @@
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const initSqlJs = require('sql.js');
 
-const DB_PATH = path.join(__dirname, '..', 'game_scheduler.db');
+// The GAME_SCHEDULER_* overrides exist for the tests (lib/backupRestore.test.js
+// runs a whole backup-and-restore cycle in a throwaway folder); the app
+// itself never sets them.
+const DB_PATH = process.env.GAME_SCHEDULER_DB_PATH || path.join(__dirname, '..', 'game_scheduler.db');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
-const BACKUP_DIR = path.join(os.homedir(), 'Documents', 'GameScheduler', 'backups');
-const BACKUPS_TO_KEEP = 30; // roughly a month of daily backups before old ones are pruned
+const BACKUP_DIR = process.env.GAME_SCHEDULER_BACKUP_DIR || path.join(os.homedir(), 'Documents', 'GameScheduler', 'backups');
+const BACKUPS_TO_KEEP = Number(process.env.GAME_SCHEDULER_BACKUPS_TO_KEEP) || 30; // roughly a month of daily backups before old ones are pruned
+const PUBLIC_DIR = process.env.GAME_SCHEDULER_PUBLIC_DIR || path.join(__dirname, '..', 'public');
+
+// The club's own uploads (Settings: club icon, round-end sound). They live
+// beside the app rather than in the database, so every backup carries a
+// copy of them too - see backupToDocuments.
+const CLUB_ASSETS = {
+    icon: { file: path.join(PUBLIC_DIR, 'icons', 'club-icon.png'), ext: 'png' },
+    horn: { file: path.join(PUBLIC_DIR, 'sounds', 'club-horn.wav'), ext: 'wav' },
+};
+const CLUB_ICON_ICO = path.join(PUBLIC_DIR, 'icons', 'club-icon.ico'); // derived from the PNG, for the desktop shortcut
 
 let SQL = null;
 
@@ -19,6 +33,15 @@ async function openDb() {
         return new SQL.Database(fileBuffer);
     }
     return new SQL.Database();
+}
+
+// A database held in memory from raw bytes - a backup being inspected or
+// restored (lib/backupRestore.js).
+async function openDbFromBuffer(buffer) {
+    if (!SQL) {
+        SQL = await initSqlJs();
+    }
+    return new SQL.Database(new Uint8Array(buffer));
 }
 
 function applySchema(db) {
@@ -437,12 +460,24 @@ This folder holds automatic backups of the club's Game Scheduler database
 (game_scheduler_<timestamp>.db), one per app launch. The newest ${BACKUPS_TO_KEEP}
 are kept; older ones are deleted automatically.
 
-To restore a backup:
+Beside each backup is a small .json file, and in the "assets" folder are
+copies of the club's own icon and round-end sound. Together they let a
+restore put those back as well. Leave them where they are.
+
+To restore a backup (the easy way):
+  In Game Scheduler, open Player Database > Database backups and click
+  Restore beside the backup you want. The app saves your current data as
+  one more backup first, so a restore can be undone.
+
+To restore by hand (if the app won't start):
 1. Close Game Scheduler completely.
 2. Copy the backup file you want back to the Game Scheduler folder (where
    "Game Scheduler.cmd" lives), and rename it to "game_scheduler.db"
    (replacing the current one).
 3. Start Game Scheduler again.
+
+Moving to a new computer: install Game Scheduler there, then use
+"Restore from a file..." on the same page and pick a backup file.
 
 To re-download the app itself:
   Repository:  https://github.com/markosharknz1/Session_Organiser
@@ -465,23 +500,76 @@ function writeBackupReadme() {
 // the newest BACKUPS_TO_KEEP afterward so the folder doesn't grow forever.
 // Never throws - a failed backup (e.g. no Documents folder, disk full)
 // should never stop the app from starting.
+function backupManifestPath(backupPath) {
+    return backupPath.replace(/\.db$/, '.json');
+}
+
+// The manifest written beside a backup: which icon and sound the club had.
+// null for backups made before manifests existed.
+function readBackupManifest(backupPath) {
+    try {
+        return JSON.parse(fs.readFileSync(backupManifestPath(backupPath), 'utf8'));
+    } catch (err) {
+        return null;
+    }
+}
+
+function backupDbFiles() {
+    // Only ever matches "game_scheduler_*.db" - README.txt is never at risk of pruning.
+    return fs.readdirSync(BACKUP_DIR)
+        .filter((f) => f.startsWith('game_scheduler_') && f.endsWith('.db'))
+        .sort(); // ISO timestamps in the filename sort chronologically
+}
+
+// Keeps the newest BACKUPS_TO_KEEP backups (with their manifests), then
+// deletes any stored icon/sound that no remaining backup refers to.
+function pruneBackups() {
+    const files = backupDbFiles();
+    const toDelete = files.slice(0, Math.max(0, files.length - BACKUPS_TO_KEEP));
+    for (const f of toDelete) {
+        fs.unlinkSync(path.join(BACKUP_DIR, f));
+        const manifest = backupManifestPath(path.join(BACKUP_DIR, f));
+        if (fs.existsSync(manifest)) fs.unlinkSync(manifest);
+    }
+    const assetsDir = path.join(BACKUP_DIR, 'assets');
+    if (!fs.existsSync(assetsDir)) return;
+    const referenced = new Set();
+    for (const f of backupDbFiles()) {
+        const m = readBackupManifest(path.join(BACKUP_DIR, f));
+        for (const stored of Object.values((m && m.assets) || {})) if (stored) referenced.add(path.basename(stored));
+    }
+    for (const f of fs.readdirSync(assetsDir)) if (!referenced.has(f)) fs.unlinkSync(path.join(assetsDir, f));
+}
+
 function backupToDocuments() {
     try {
         if (!fs.existsSync(DB_PATH)) return null;
         fs.mkdirSync(BACKUP_DIR, { recursive: true });
         writeBackupReadme();
 
-        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        let stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        while (fs.existsSync(path.join(BACKUP_DIR, `game_scheduler_${stamp}.db`))) stamp += '-1'; // two in the same millisecond
         const backupPath = path.join(BACKUP_DIR, `game_scheduler_${stamp}.db`);
         fs.copyFileSync(DB_PATH, backupPath);
 
-        // Only ever matches "game_scheduler_*.db" - README.txt is never at risk of pruning.
-        const files = fs.readdirSync(BACKUP_DIR)
-            .filter((f) => f.startsWith('game_scheduler_') && f.endsWith('.db'))
-            .sort(); // ISO timestamps in the filename sort chronologically
-        const toDelete = files.slice(0, Math.max(0, files.length - BACKUPS_TO_KEEP));
-        for (const f of toDelete) fs.unlinkSync(path.join(BACKUP_DIR, f));
+        // The club's icon and sound: stored once each under a name made from
+        // their contents (so thirty backups of the same sound cost one
+        // copy), and named in this backup's manifest. null = the club had
+        // none at the time, so a restore removes any that is there now.
+        const assets = {};
+        for (const [key, asset] of Object.entries(CLUB_ASSETS)) {
+            assets[key] = null;
+            if (!fs.existsSync(asset.file)) continue;
+            const bytes = fs.readFileSync(asset.file);
+            const name = `${crypto.createHash('sha256').update(bytes).digest('hex').slice(0, 32)}.${asset.ext}`;
+            const assetsDir = path.join(BACKUP_DIR, 'assets');
+            fs.mkdirSync(assetsDir, { recursive: true });
+            if (!fs.existsSync(path.join(assetsDir, name))) fs.writeFileSync(path.join(assetsDir, name), bytes);
+            assets[key] = `assets/${name}`;
+        }
+        fs.writeFileSync(backupManifestPath(backupPath), `${JSON.stringify({ created_at: new Date().toISOString(), assets }, null, 2)}\n`);
 
+        pruneBackups();
         return backupPath;
     } catch (err) {
         console.error('Backup to Documents failed (non-fatal):', err.message);
@@ -491,13 +579,21 @@ function backupToDocuments() {
 
 function listBackups() {
     if (!fs.existsSync(BACKUP_DIR)) return [];
-    return fs.readdirSync(BACKUP_DIR)
-        .filter((f) => f.startsWith('game_scheduler_') && f.endsWith('.db'))
+    return backupDbFiles()
         .map((f) => {
-            const stat = fs.statSync(path.join(BACKUP_DIR, f));
-            return { name: f, size_bytes: stat.size, created_at: stat.mtime.toISOString() };
+            const file = path.join(BACKUP_DIR, f);
+            const stat = fs.statSync(file);
+            const manifest = readBackupManifest(file);
+            return {
+                name: f,
+                size_bytes: stat.size,
+                created_at: stat.mtime.toISOString(),
+                has_manifest: !!manifest,
+                has_icon: !!(manifest && manifest.assets && manifest.assets.icon),
+                has_horn: !!(manifest && manifest.assets && manifest.assets.horn),
+            };
         })
-        .sort((a, b) => b.created_at.localeCompare(a.created_at));
+        .sort((x, y) => y.name.localeCompare(x.name)); // newest first, by the timestamp in the name
 }
 
 // Runs a SELECT and returns an array of plain row objects.
@@ -518,6 +614,7 @@ function get(db, sql, params = []) {
 }
 
 module.exports = {
+    PUBLIC_DIR, CLUB_ASSETS, CLUB_ICON_ICO, openDbFromBuffer, readBackupManifest,
     DB_PATH, SCHEMA_PATH, BACKUP_DIR, openDb, applySchema, saveDb, all, get,
     ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, ensureAttendanceWasBooked, trimPlayerNames, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, listBackups,
     todayLocalDateStr,

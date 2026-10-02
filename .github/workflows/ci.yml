@@ -22,6 +22,7 @@ jobs:
       - run: npm run access:test
       - run: npm run html:test
       - run: npm run tally:test
+      - run: npm run backup:test
       - name: Launcher and server load
         run: |
           node --check launcher.js

@@ -285,16 +285,83 @@ function formatBytes(bytes) {
 async function loadBackups() {
     const status = await api('/api/backup/status');
     $('#backup-location').textContent = `Automatic backups are saved to ${status.backup_dir} every time the app opens (the newest 30 are kept, older ones are pruned automatically).`;
+    if (!status.backups.length) $('#backup-result').textContent = '';
     $('#backups-tbody').innerHTML = status.backups.length
         ? status.backups.map((b) => `
             <tr>
                 <td>${esc(b.name)}</td>
                 <td>${new Date(b.created_at).toLocaleString()}</td>
                 <td class="num">${formatBytes(b.size_bytes)}</td>
+                <td class="muted">${backupAssetsLabel(b)}</td>
+                <td><a class="textlink" data-restore="${esc(b.name)}">Restore</a></td>
             </tr>
         `).join('')
-        : '<tr class="empty-row"><td colspan="3" class="muted">No backups yet.</td></tr>';
+        : '<tr class="empty-row"><td colspan="5" class="muted">No backups yet.</td></tr>';
 }
+
+function backupAssetsLabel(b) {
+    if (!b.has_manifest) return 'not included (older backup)';
+    const parts = [b.has_icon ? 'icon' : null, b.has_horn ? 'sound' : null].filter(Boolean);
+    return parts.length ? parts.join(' + ') : 'built-in icon and horn';
+}
+
+// --- Restore ---
+function restoredMessage(result) {
+    const s = result.summary;
+    const bits = [`Restored: ${s.players} players, ${s.sessions} sessions${s.last_session_date ? `, latest ${s.last_session_date}` : ''}.`];
+    const asset = { restored: 'restored', removed: 'removed (the backup had none)', kept: 'left as it was', none: 'none' };
+    bits.push(`Icon ${asset[result.assets.icon]}; sound ${asset[result.assets.horn]}.`);
+    if (result.safety_backup) bits.push(`Your data as it was a moment ago is saved as ${result.safety_backup}.`);
+    return bits.join(' ');
+}
+
+async function finishRestore(result) {
+    $('#backup-result').textContent = restoredMessage(result);
+    showError('');
+    await loadMembers();
+    await loadBackups();
+}
+
+$('#backups-tbody').addEventListener('click', async (e) => {
+    const link = e.target.closest('[data-restore]');
+    if (!link) return;
+    const name = link.dataset.restore;
+    try {
+        const d = await api(`/api/backup/describe/${encodeURIComponent(name)}`);
+        const open = await fetch('/api/sessions/open').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+        const lines = [
+            `Restore this backup?`,
+            ``,
+            `${d.club_name || 'Game Scheduler'} - ${d.players} players, ${d.sessions} sessions${d.last_session_date ? `, latest session ${d.last_session_date}` : ''}.`,
+            d.includes_icon_and_sound ? `Club icon and sound: put back as they were (${backupAssetsLabel({ has_manifest: true, has_icon: d.has_icon, has_horn: d.has_horn })}).` : `Club icon and sound: not part of this older backup - left as they are now.`,
+            ``,
+            `Everything entered since this backup was made will be replaced. Your data as it is now is saved as a new backup first, so you can come back to it.`,
+        ];
+        if (open) lines.push('', `A SESSION IS OPEN RIGHT NOW (${open.label || 'session'}) - restoring replaces it.`);
+        if (!confirm(lines.join('\n'))) return;
+        const result = await api('/api/backup/restore', { method: 'POST', body: JSON.stringify({ name }) });
+        await finishRestore(result);
+    } catch (err) {
+        showError(err.message);
+    }
+});
+
+$('#backup-restore-file').addEventListener('click', () => $('#backup-restore-input').click());
+$('#backup-restore-input').addEventListener('change', async () => {
+    const file = $('#backup-restore-input').files[0];
+    if (!file) return;
+    try {
+        if (!confirm(`Restore from "${file.name}"?\n\nThe club's data will be replaced by what is in this file. Your data as it is now is saved as a new backup first, so you can come back to it. The club icon and sound are not in a database file, so they stay as they are.`)) return;
+        const res = await fetch('/api/backup/restore-upload', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: await file.arrayBuffer() });
+        const body = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(body?.error || `Restore failed (${res.status})`);
+        await finishRestore(body);
+    } catch (err) {
+        showError(err.message);
+    } finally {
+        $('#backup-restore-input').value = '';
+    }
+});
 
 $('#backup-now').addEventListener('click', async () => {
     try {

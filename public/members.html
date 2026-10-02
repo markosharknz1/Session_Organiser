@@ -117,13 +117,17 @@
     <section class="panel">
         <h2>Database backups</h2>
         <p class="muted" id="backup-location">A copy of the database is backed up automatically to your Documents folder every time the app opens (the newest 30 backups are kept, older ones are pruned automatically).</p>
+        <p class="muted">Each backup also keeps the club's own icon and round-end sound. <strong>Restore</strong> puts the club's data back exactly as it was in that backup - players, sessions, payments, settings, icon and sound. Your data as it is now is saved as one more backup first, so a restore can be undone.</p>
         <div class="row">
             <button class="primary" id="backup-now">Back up now</button>
             <button id="backup-download">Download a copy</button>
+            <button id="backup-restore-file">Restore from a file...</button>
+            <input type="file" id="backup-restore-input" accept=".db" hidden>
         </div>
+        <p class="save-note" id="backup-result"></p>
         <div class="roster-table-wrap" style="margin-top:16px;">
             <table class="history-table" id="backups-table">
-                <thead><tr><th>Backup</th><th>Date</th><th class="num">Size</th></tr></thead>
+                <thead><tr><th>Backup</th><th>Date</th><th class="num">Size</th><th>Icon &amp; sound</th><th></th></tr></thead>
                 <tbody id="backups-tbody"></tbody>
             </table>
         </div>
