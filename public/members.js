@@ -309,7 +309,7 @@ function backupAssetsLabel(b) {
 function restoredMessage(result) {
     const s = result.summary;
     const bits = [`Restored: ${s.players} players, ${s.sessions} sessions${s.last_session_date ? `, latest ${s.last_session_date}` : ''}.`];
-    const asset = { restored: 'restored', removed: 'removed (the backup had none)', kept: 'left as it was', none: 'none' };
+    const asset = { restored: 'restored', removed: 'removed (the backup had none)', kept: 'left as it was', none: 'unchanged' };
     bits.push(`Icon ${asset[result.assets.icon]}; sound ${asset[result.assets.horn]}.`);
     if (result.safety_backup) bits.push(`Your data as it was a moment ago is saved as ${result.safety_backup}.`);
     return bits.join(' ');
