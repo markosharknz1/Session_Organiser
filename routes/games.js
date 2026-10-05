@@ -2,6 +2,7 @@ const express = require('express');
 const store = require('../db/store');
 const { broadcast } = require('../lib/eventBus');
 const { getNextRoundNumber } = require('../lib/roundLifecycle');
+const { settleVacancies } = require('../lib/leaving');
 
 const router = express.Router();
 
@@ -26,7 +27,15 @@ function gameWithPlayers(gameId) {
          WHERE gp.game_id = ? ORDER BY gp.side, p.last_name`,
         [game.session_id, game.round_number, gameId]
     );
-    return { ...game, players };
+    // Places on this court that emptied because the player left (only ever
+    // present on a staged game - see lib/leaving.js).
+    const vacated = store.query(
+        `SELECT gv.player_id, gv.side, p.first_name, p.last_name
+         FROM game_vacancies gv JOIN players p ON p.id = gv.player_id
+         WHERE gv.game_id = ? ORDER BY gv.side, p.last_name`,
+        [gameId]
+    );
+    return { ...game, players, vacated };
 }
 
 // Validates a proposed lineup against the schema rules and current session
@@ -100,6 +109,11 @@ function validateLineup({ sessionId, courtId, roundNumber, format, players, excl
         );
         if (!attendance) {
             errors.push(`player ${playerId} is not present in this session`);
+            continue;
+        }
+        if (attendance.leave_after_round !== null && attendance.leave_after_round !== undefined && Number.isInteger(roundNumber) && roundNumber > attendance.leave_after_round) {
+            const who = store.queryOne('SELECT first_name, last_name FROM players WHERE id = ?', [playerId]);
+            errors.push(`${who ? `${who.first_name} ${who.last_name}` : `player ${playerId}`} is leaving after round ${attendance.leave_after_round}`);
             continue;
         }
         const doubleBooked = store.queryOne(
@@ -205,6 +219,7 @@ router.put('/games/:id', (req, res) => {
                 [existing.id, p.player_id, p.side, player.skill_level]
             );
         }
+        settleVacancies(existing.id);
         store.persist();
         broadcast('game', { session_id: existing.session_id });
         res.json(gameWithPlayers(existing.id));
@@ -291,6 +306,7 @@ router.put('/sessions/:sessionId/games/batch', (req, res) => {
                     const player = store.queryOne('SELECT skill_level FROM players WHERE id = ?', [p.player_id]);
                     store.run('INSERT INTO game_players (game_id, player_id, side, skill_level_at_time) VALUES (?, ?, ?, ?)', [c.game_id, p.player_id, p.side, player.skill_level]);
                 }
+                settleVacancies(c.game_id);
                 return c.game_id;
             }
             return insertGame({ sessionId, courtId: c.court_id, roundNumber: round_number, format: c.format, players: c.players || [] });
@@ -308,6 +324,7 @@ router.delete('/games/:id', (req, res) => {
     if (!existing) return res.status(404).json({ error: 'Game not found' });
     if (existing.status !== 'staged') return res.status(409).json({ error: 'Only staged games can be unstaged' });
     store.run('DELETE FROM game_players WHERE game_id = ?', [existing.id]);
+    store.run('DELETE FROM game_vacancies WHERE game_id = ?', [existing.id]);
     store.run('DELETE FROM games WHERE id = ?', [existing.id]);
     store.persist();
     broadcast('game', { session_id: existing.session_id });

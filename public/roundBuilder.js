@@ -19,7 +19,10 @@ function buildStagedIndex(serverStagedGames) {
     for (const g of serverStagedGames) {
         const side1 = g.players.filter((p) => p.side === 1).map((p) => p.player_id);
         const side2 = g.players.filter((p) => p.side === 2).map((p) => p.player_id);
-        byCourtId.set(g.court_id, { gameId: g.id, format: g.format, side1, side2 });
+        // vacated: places that emptied because the player left - shown as
+        // red boxes until the court is full again.
+        const vacated = (g.vacated || []).map((v) => ({ player_id: v.player_id, side: v.side, name: `${v.first_name} ${v.last_name}` }));
+        byCourtId.set(g.court_id, { gameId: g.id, format: g.format, side1, side2, vacated });
     }
     return byCourtId;
 }
@@ -55,6 +58,7 @@ function mergeBuilderState(prevState, serverStagedGames, sessionCourts, targetRo
             const samePersistedGame = prev && prev.staged && prev.staged.gameId === serverStaged.gameId;
             if (samePersistedGame && prev.editing) {
                 // Mid-edit on an already-staged court - don't clobber the in-progress edit.
+                prev.staged.vacated = serverStaged.vacated;
                 next[courtId] = prev;
             } else {
                 next[courtId] = {

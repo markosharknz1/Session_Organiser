@@ -1,6 +1,7 @@
 const express = require('express');
 const store = require('../db/store');
 const { broadcast } = require('../lib/eventBus');
+const { vacateStagedGames } = require('../lib/leaving');
 
 const router = express.Router();
 
@@ -106,6 +107,12 @@ router.post('/sessions/:sessionId/attendance', (req, res) => {
                 new_member ? 1 : 0,
             ]
         );
+        // Back after leaving: any "this spot emptied when they left" marker
+        // on an upcoming court is out of date.
+        store.run(
+            `DELETE FROM game_vacancies WHERE player_id = ? AND game_id IN (SELECT id FROM games WHERE session_id = ?)`,
+            [player_id, sessionId]
+        );
         store.persist();
         broadcast('attendance', { session_id: Number(sessionId) });
         res.status(201).json(store.queryOne('SELECT * FROM attendance WHERE id = ?', [id]));
@@ -128,14 +135,33 @@ router.put('/attendance/:id', (req, res) => {
     const validationError = validatePaymentFields(existing.session_id, merged);
     if (validationError) return res.status(400).json({ error: validationError });
     applyPaymentDefaults(merged);
+    // "Leaving after round N": only for someone who is here, and only for a
+    // round that hasn't finished.
+    let leaveAfterRound = null;
+    if (['here_today', 'playing', 'checked_in'].includes(merged.state) && merged.leave_after_round !== null && merged.leave_after_round !== undefined && merged.leave_after_round !== '') {
+        leaveAfterRound = Number(merged.leave_after_round);
+        if (!Number.isInteger(leaveAfterRound) || leaveAfterRound < 1) {
+            return res.status(400).json({ error: 'leave_after_round must be a round number' });
+        }
+        if (leaveAfterRound !== existing.leave_after_round) {
+            const done = store.queryOne(
+                `SELECT MAX(round_number) AS m FROM games WHERE session_id = ? AND status = 'completed'`,
+                [existing.session_id]
+            ).m || 0;
+            if (leaveAfterRound <= done) {
+                return res.status(400).json({ error: `Round ${leaveAfterRound} has already been played - choose a later round, or mark them as leaving now.` });
+            }
+        }
+    }
     try {
         store.run(
-            `UPDATE attendance SET state=?, left_reason=?, leave_note=?, payment_category_id=?, payment_amount_cents=?, payment_method=?, payment_note=?, first_time=?, new_member=?
+            `UPDATE attendance SET state=?, left_reason=?, leave_note=?, leave_after_round=?, payment_category_id=?, payment_amount_cents=?, payment_method=?, payment_note=?, first_time=?, new_member=?
              WHERE id=?`,
             [
                 merged.state,
                 merged.state === 'left' ? merged.left_reason : null,
                 merged.state === 'left' ? (String(merged.leave_note || '').trim() || null) : null,
+                leaveAfterRound,
                 merged.payment_category_id ?? null,
                 merged.payment_amount_cents ?? null,
                 merged.payment_method ?? null,
@@ -149,17 +175,24 @@ router.put('/attendance/:id', (req, res) => {
         // A player leaving mid-session is cleanly detached from anything
         // staged for a future round - active/completed games (already
         // played) are never touched, preserving the audit trail.
+        // Their place on each of those courts is remembered (game_vacancies)
+        // so the Rounds page can show whose spot needs filling. Someone
+        // leaving after round N keeps their court up to round N and comes
+        // off anything staged beyond it.
         let affectedStagedGames = 0;
         if (merged.state === 'left') {
-            const staged = store.query(
-                `SELECT gp.game_id FROM game_players gp JOIN games g ON g.id = gp.game_id
-                 WHERE gp.player_id = ? AND g.session_id = ? AND g.status = 'staged'`,
+            affectedStagedGames = vacateStagedGames(existing.session_id, existing.player_id, 0);
+        } else if (leaveAfterRound !== null) {
+            affectedStagedGames = vacateStagedGames(existing.session_id, existing.player_id, leaveAfterRound);
+        } else if (existing.leave_after_round !== null && existing.leave_after_round !== undefined) {
+            // Staying after all: their old spots are no longer "left" ones
+            // (they go back in the pool to be placed again).
+            const cleared = store.query(
+                `SELECT gv.game_id FROM game_vacancies gv JOIN games g ON g.id = gv.game_id WHERE gv.player_id = ? AND g.session_id = ?`,
                 [existing.player_id, existing.session_id]
             );
-            for (const row of staged) {
-                store.run('DELETE FROM game_players WHERE game_id = ? AND player_id = ?', [row.game_id, existing.player_id]);
-            }
-            affectedStagedGames = staged.length;
+            for (const row of cleared) store.run('DELETE FROM game_vacancies WHERE game_id = ? AND player_id = ?', [row.game_id, existing.player_id]);
+            affectedStagedGames = cleared.length;
         }
 
         store.persist();

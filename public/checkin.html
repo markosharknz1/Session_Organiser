@@ -153,31 +153,6 @@
     </section>
 </main>
 
-<!-- Double-click (or right-click) a checked-in player: why are they leaving? -->
-<div id="leave-modal-backdrop" class="modal-backdrop" style="display:none;">
-    <div class="modal">
-        <h3 style="margin: 0 0 12px;"><span id="lm-player-name"></span> is leaving</h3>
-        <div class="leave-options">
-            <label class="leave-option"><input type="radio" name="lm-reason" value="departed" checked>
-                <span><strong>Left early</strong><br><span class="muted">Still counts as having attended; their payment stays.</span></span></label>
-            <label class="leave-option"><input type="radio" name="lm-reason" value="injured">
-                <span><strong>Left injured</strong><br><span class="muted">Counts as attended, payment stays, and is listed as an injury in the reports.</span></span></label>
-            <label class="leave-option"><input type="radio" name="lm-reason" value="mistake">
-                <span><strong>Checked in by mistake</strong><br><span class="muted">Takes them off today's list as if they were never here, and removes their payment details.</span></span></label>
-        </div>
-        <div class="field" id="lm-note-field" style="display:none;">
-            <label for="lm-note">What happened? (optional)</label>
-            <textarea id="lm-note" rows="3" placeholder="e.g. rolled ankle on court 3, ice applied, went home with a friend"></textarea>
-            <p class="muted" style="margin:4px 0 0;">Kept as the club's injury record - it appears in the emailed reports and in History's injury log, where it can be edited later.</p>
-        </div>
-        <p class="error-banner" id="lm-error" style="display:none;"></p>
-        <div class="row" style="justify-content: flex-end;">
-            <button id="lm-cancel">Cancel</button>
-            <button class="primary" id="lm-confirm">Confirm</button>
-        </div>
-    </div>
-</div>
-
 <div id="payment-modal-backdrop" class="modal-backdrop" style="display:none;">
     <div class="modal">
         <h3>Record payment - <span id="pm-player-name"></span></h3>
@@ -212,9 +187,6 @@
         </div>
     </div>
 </div>
-
-<!-- Right-click menu for a checked-in / booked row (see checkin.js) -->
-<div id="row-menu" class="ctx-menu" style="display:none;" role="menu"></div>
 
 <div id="checkin-modal-backdrop" class="modal-backdrop" style="display:none;">
     <div class="modal">
@@ -313,6 +285,7 @@
 <script src="/tonightSummary.js"></script>
 <script src="/sessionNotes.js"></script>
 <script src="/sessionSummaryModal.js"></script>
+<script src="/leaving.js"></script>
 <script src="/checkin.js"></script>
 <script src="/pwa.js"></script>
 </body>

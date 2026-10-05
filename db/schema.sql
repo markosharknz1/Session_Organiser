@@ -134,7 +134,11 @@ CREATE TABLE IF NOT EXISTS attendance (
     -- Free text recorded when a player leaves - in practice the injury note
     -- ("rolled ankle on court 3, ice applied, went home"). Shown in the
     -- tally reports and History's injury log.
-    leave_note TEXT
+    leave_note TEXT,
+    -- "I'm off after the next round": the last round this player is staying
+    -- for. They can't be put on a court in a later round, and are marked as
+    -- having left early when that round ends. NULL = staying.
+    leave_after_round INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS games (
@@ -154,6 +158,17 @@ CREATE TABLE IF NOT EXISTS game_players (
     player_id INTEGER NOT NULL REFERENCES players(id),
     side INTEGER NOT NULL CHECK (side IN (1,2)),
     skill_level_at_time TEXT NOT NULL CHECK (skill_level_at_time IN ('A','B','C','D','E')),
+    PRIMARY KEY (game_id, player_id)
+);
+
+-- A place on a not-yet-played court that emptied because its player left
+-- (or said they are leaving before that round). Only there so the Rounds
+-- page can show whose spot needs filling; cleared once the court is full
+-- again, unstaged, or goes on court.
+CREATE TABLE IF NOT EXISTS game_vacancies (
+    game_id INTEGER NOT NULL REFERENCES games(id),
+    player_id INTEGER NOT NULL REFERENCES players(id),
+    side INTEGER NOT NULL CHECK (side IN (1,2)),
     PRIMARY KEY (game_id, player_id)
 );
 

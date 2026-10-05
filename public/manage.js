@@ -291,7 +291,7 @@ function handleServerEvent(msg) {
             .catch((err) => showError(err.message));
     } else if (msg.type === 'attendance' && msg.session_id === openSession.id) {
         loadAttendancePool()
-            .then(() => renderBuilder())
+            .then(() => { renderBuilder(); return viewedRound ? renderRoundGamesPanel() : null; })
             .catch((err) => showError(err.message));
     } else if (msg.type === 'auto_generate_failed' && msg.session_id === openSession.id) {
         showError(msg.message);
@@ -532,8 +532,12 @@ async function renderRoundGamesPanel() {
     $('#active-round-plus').disabled = viewedRound >= defaultViewedRound();
     const sideLines = (g, sideNum) => g.players
         .filter((p) => p.side === sideNum)
-        .map((p) => `<div class="active-game-player">${p.first_name} ${p.last_name}${skillBadge(p.skill_level_at_time)}${gamesCount(p.games_played)}</div>`)
-        .join('');
+        .map((p) => `<div class="active-game-player" data-player-id="${p.player_id}">${p.first_name} ${p.last_name}${skillBadge(p.skill_level_at_time)}${gamesCount(p.games_played)}${leavingBadge(attendanceFor(p.player_id))}</div>`)
+        .join('')
+        // a staged court someone has left: their place, boxed in red
+        + (g.vacated || []).filter((v) => v.side === sideNum)
+            .map((v) => `<div class="active-game-player vacated"><s>${esc(v.first_name)} ${esc(v.last_name)}</s> <span class="vacated-why">${attendanceFor(v.player_id)?.leave_after_round ? `leaving after round ${attendanceFor(v.player_id).leave_after_round}` : 'left'} - needs replacing</span></div>`)
+            .join('');
     $('#active-games-grid').innerHTML = games.map((g) => `
         <div class="active-game-card">
             <h4>Court ${courtNumberFor(g.court_id)} <span class="muted">(${g.format})</span></h4>
@@ -550,10 +554,85 @@ $('#active-round-plus').addEventListener('click', () => {
     if (viewedRound < defaultViewedRound()) { viewedRound += 1; renderRoundGamesPanel().catch((err) => showError(err.message)); }
 });
 
+// --- Right-click a player anywhere on this page: leaving / remove ---
+// Same menu and box as the Check-in page (leaving.js). Works on a name in
+// the player pool, on a court being built, and on a court in the round
+// panel above.
+async function afterLeavingChange() {
+    await loadAttendancePool();
+    await loadRoundStatus();
+    await loadActiveGames();
+    await loadBuilderForRound(resolveTargetRound(buildRound, roundStatus));
+}
+
+for (const sel of ['#player-pool', '#courts-grid', '#active-games-grid']) {
+    $(sel).addEventListener('contextmenu', (e) => {
+        const target = e.target.closest('[data-player-id]');
+        if (!target) return;
+        const a = attendanceFor(Number(target.dataset.playerId));
+        if (!a) return; // already left (an old round being looked back at)
+        showRowMenu(e, `${a.first_name} ${a.last_name}`, leavingMenuItems(a, { onDone: afterLeavingChange }));
+    });
+}
+
 // --- Attendance pool ---
+// Names of everyone seen in the pool this session, so a player who has
+// since left can still be named in the place they vacated.
+const knownNames = new Map();
+
 async function loadAttendancePool() {
     const attendance = await api(`/api/sessions/${openSession.id}/attendance`);
     attendancePool = attendance.filter((a) => a.state === 'here_today' || a.state === 'playing');
+    for (const a of attendancePool) knownNames.set(a.player_id, `${a.first_name} ${a.last_name}`);
+    removeLeaversFromDrafts();
+}
+
+function attendanceFor(playerId) {
+    return attendancePool.find((p) => p.player_id === playerId) || null;
+}
+
+// Here, and not leaving before the given round.
+function canPlayRound(playerId, round) {
+    const a = attendanceFor(playerId);
+    return !!a && (!a.leave_after_round || a.leave_after_round >= round);
+}
+
+// A court still being built (not saved yet, or mid-edit) only exists in
+// this browser, so the server can't take a leaving player off it - do it
+// here, and remember the place they left so it shows as a red box. Saved
+// courts are handled by the server (routes/attendance.js) and arrive with
+// their own `vacated` list.
+function removeLeaversFromDrafts() {
+    if (!buildState || !buildRound) return;
+    for (const st of Object.values(buildState)) {
+        if (st.staged && !st.editing) continue;
+        for (const [key, side] of [['side1', 1], ['side2', 2]]) {
+            const gone = st.draft[key].filter((id) => !canPlayRound(id, buildRound));
+            if (!gone.length) continue;
+            st.draft[key] = st.draft[key].filter((id) => !gone.includes(id));
+            st.localVacated = [...(st.localVacated || []).filter((v) => !gone.includes(v.player_id)), ...gone.map((id) => ({ player_id: id, side }))];
+        }
+    }
+}
+
+// Whose places on this court need filling, per side: the server's record
+// for a saved court plus anything removed from a draft here - minus anyone
+// who is back on the court.
+function vacatedFor(st, state, sideNum) {
+    const onCourt = new Set([...state.side1, ...state.side2]);
+    const seen = new Set();
+    return [...((st.staged && st.staged.vacated) || []), ...(st.localVacated || [])].filter((v) => {
+        if (v.side !== sideNum || onCourt.has(v.player_id) || seen.has(v.player_id)) return false;
+        seen.add(v.player_id);
+        return true;
+    });
+}
+
+function vacatedSlotHtml(v) {
+    const a = attendanceFor(v.player_id);
+    const name = v.name || knownNames.get(v.player_id) || `#${v.player_id}`;
+    const why = a && a.leave_after_round ? `leaving after round ${a.leave_after_round}` : 'left';
+    return `<div class="slot empty vacated" title="${esc(name)} ${why} - drop another player here"><span><s>${esc(name)}</s></span><span class="vacated-why">${why}</span></div>`;
 }
 
 // --- Builder ---
@@ -601,7 +680,7 @@ function allUsedPlayerIds() {
 
 function playerLabel(playerId) {
     const a = attendancePool.find((p) => p.player_id === playerId);
-    if (!a) return `#${playerId}`;
+    if (!a) return knownNames.get(playerId) || `#${playerId}`;
     return `${a.first_name} ${a.last_name}`;
 }
 
@@ -625,7 +704,7 @@ function poolPlayerHtml(p, rested) {
     // under the "Played last game" section heading below.
     return `
         <div class="pool-player" draggable="true" data-player-id="${p.player_id}">
-            <span class="${rested ? 'rested-last-round' : ''}">${p.first_name} ${p.last_name}${skillBadge(p.skill_level)}${genderBadge(p.gender)}</span>
+            <span class="${rested ? 'rested-last-round' : ''}">${p.first_name} ${p.last_name}${skillBadge(p.skill_level)}${genderBadge(p.gender)}${leavingBadge(p)}</span>
         </div>
     `;
 }
@@ -636,7 +715,8 @@ function renderBuilder() {
     wireCourtCardEvents();
 
     const used = allUsedPlayerIds();
-    const pool = attendancePool.filter((p) => !used.has(p.player_id));
+    // Someone leaving before the round being built isn't available for it.
+    const pool = attendancePool.filter((p) => !used.has(p.player_id) && canPlayRound(p.player_id, buildRound));
     $('#pool-count').textContent = pool.length;
 
     const poolEl = $('#player-pool');
@@ -673,6 +753,7 @@ function renderCourtCard(court) {
 
     const sideHtml = (sideNum) => {
         const ids = sideNum === 1 ? state.side1 : state.side2;
+        const vacated = vacatedFor(st, state, sideNum);
         const slots = [];
         for (let i = 0; i < sideCapacity(state.format, sideNum); i++) {
             const playerId = ids[i];
@@ -682,11 +763,14 @@ function renderCourtCard(court) {
                 // an at-a-glance check that fair rotation actually happened.
                 const restedLastRound = buildRound > 1 && !playedPreviousRoundIds.has(playerId);
                 slots.push(`
-                    <div class="slot filled" ${isReadOnly ? '' : `draggable="true" data-court="${court.court_id}" data-side="${sideNum}" data-player="${playerId}"`}>
-                        <span class="${restedLastRound ? 'rested-last-round' : ''}">${playerLabel(playerId)}${skillBadge(playerSkill(playerId))}${genderBadge(playerGender(playerId))}</span>
+                    <div class="slot filled" data-player-id="${playerId}" ${isReadOnly ? '' : `draggable="true" data-court="${court.court_id}" data-side="${sideNum}" data-player="${playerId}"`}>
+                        <span class="${restedLastRound ? 'rested-last-round' : ''}">${playerLabel(playerId)}${skillBadge(playerSkill(playerId))}${genderBadge(playerGender(playerId))}${leavingBadge(attendanceFor(playerId))}</span>
                         ${isReadOnly ? '' : `<span class="remove-slot" data-court="${court.court_id}" data-side="${sideNum}" data-player="${playerId}">&times;</span>`}
                     </div>
                 `);
+            } else if (vacated.length) {
+                // the place of someone who has left: red box, still a drop target
+                slots.push(vacatedSlotHtml(vacated.shift()));
             } else {
                 slots.push('<div class="slot empty">Drop here</div>');
             }
@@ -701,7 +785,8 @@ function renderCourtCard(court) {
 
     const totalPlayers = state.side1.length + state.side2.length;
     const expectedSize = FORMAT_SIZES[state.format];
-    const incomplete = totalPlayers > 0 && totalPlayers < expectedSize;
+    const hasVacancy = vacatedFor(st, state, 1).length + vacatedFor(st, state, 2).length > 0;
+    const incomplete = (totalPlayers > 0 || hasVacancy) && totalPlayers < expectedSize;
 
     let actions;
     if (isReadOnly) {
@@ -726,7 +811,7 @@ function renderCourtCard(court) {
             <div class="court-card-header">
                 <strong>Court ${court.court_number}</strong>
                 ${isReadOnly
-                    ? `<span class="muted">${state.format} - staged${incomplete ? ' - incomplete' : ''}</span>`
+                    ? `<span class="muted">${state.format} - staged${incomplete ? (hasVacancy ? ' - <strong class="needs-player">needs a player</strong>' : ' - incomplete') : ''}</span>`
                     : `<select data-action="format" data-court="${court.court_id}" ${st.staged ? '' : ''}>
                         <option value="doubles" ${state.format === 'doubles' ? 'selected' : ''}>Doubles</option>
                         <option value="singles" ${state.format === 'singles' ? 'selected' : ''}>Singles</option>
@@ -861,6 +946,7 @@ function clearCourt(courtId) {
     const st = buildState[courtId];
     st.draft.side1 = [];
     st.draft.side2 = [];
+    st.localVacated = [];
     renderBuilder();
 }
 
@@ -942,7 +1028,7 @@ function applySavedGame(game) {
     const side1 = game.players.filter((p) => p.side === 1).map((p) => p.player_id);
     const side2 = game.players.filter((p) => p.side === 2).map((p) => p.player_id);
     buildState[game.court_id] = {
-        staged: { gameId: game.id, format: game.format, side1, side2 },
+        staged: { gameId: game.id, format: game.format, side1, side2, vacated: (game.vacated || []).map((v) => ({ player_id: v.player_id, side: v.side, name: `${v.first_name} ${v.last_name}` })) },
         draft: { format: game.format, side1: [...side1], side2: [...side2] },
         editing: false,
     };

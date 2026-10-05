@@ -592,6 +592,38 @@ nav.app-nav a.active {
     border: 1px dashed var(--border);
 }
 
+/* The place of a player who has left (or is leaving before this round):
+   boxed in red until someone else is dropped in. */
+.slot.empty.vacated {
+    border: 2px solid var(--danger);
+    background: #fef2f2;
+    color: var(--danger);
+    font-style: normal;
+    gap: 8px;
+}
+.vacated-why { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; }
+.needs-player { color: var(--danger); }
+.active-game-player.vacated {
+    border: 2px solid var(--danger);
+    background: #fef2f2;
+    color: var(--danger);
+    border-radius: 6px;
+    padding: 2px 6px;
+    margin-top: 3px;
+}
+.leaving-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border: 1px solid var(--danger);
+    border-radius: 999px;
+    color: var(--danger);
+    background: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
 .slot .remove-slot {
     cursor: pointer;
     color: var(--danger);

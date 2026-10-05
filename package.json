@@ -18,7 +18,8 @@
     "access:test": "node lib/access.test.js",
     "html:test": "node lib/htmlStructure.test.js",
     "tally:test": "node lib/tallyReport.test.js",
-    "backup:test": "node lib/backupRestore.test.js"
+    "backup:test": "node lib/backupRestore.test.js",
+    "leaving:test": "node lib/leaving.test.js"
   },
   "dependencies": {
     "exceljs": "4.4.0",

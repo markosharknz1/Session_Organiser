@@ -434,6 +434,8 @@ function ensureAttendanceWasBooked(db) {
     }
     // The injury note (same reason for living here: after the rebuild).
     if (!cols.includes('leave_note')) db.run(`ALTER TABLE attendance ADD COLUMN leave_note TEXT`);
+    // "Leaving after round N" - the last round the player is staying for.
+    if (!cols.includes('leave_after_round')) db.run(`ALTER TABLE attendance ADD COLUMN leave_after_round INTEGER`);
 }
 
 // Names saved with spaces around them (an older quick-add, a hand-edited

@@ -411,7 +411,7 @@ function renderHereTable() {
             <tr data-attendance-id="${a.id}" data-player-id="${a.player_id}">
                 <td>${a.first_name} ${a.last_name} ${memberFlagBadges(a)}</td>
                 <td>${skillBadge(a.skill_level)}</td>
-                <td class="muted">${a.state === 'playing' ? 'playing' : 'waiting'}</td>
+                <td class="muted">${a.state === 'playing' ? 'playing' : 'waiting'}${leavingBadge(a)}</td>
                 ${paymentTrackingEnabled ? `<td class="payment-cell">${paymentCellHtml(a)}</td>` : ''}
             </tr>
         `).join('');
@@ -833,61 +833,14 @@ $('#here-tbody').addEventListener('dblclick', (e) => {
     if (e.target.closest('.payment-cell')) return; // payment editing lives on single-click, not removal
     const tr = e.target.closest('tr[data-attendance-id]');
     if (!tr) return;
-    openLeaveModal(Number(tr.dataset.attendanceId));
+    leaveFor(Number(tr.dataset.attendanceId));
 });
 
-// --- A checked-in player is leaving: why? ---
-// Left early (the default) and Left injured keep them in tonight's count
-// with their payment; the reports name them. "Checked in by mistake" is
-// the undo: it clears the payment details and drops them from tonight
-// entirely (recorded with the same 'no-show' reason as a cancelled
-// booking, which every total already leaves out).
-let leaveModalAttendanceId = null;
-
-function openLeaveModal(attendanceId) {
-    const a = attendance.find((x) => x.id === attendanceId);
-    if (!a) return;
-    leaveModalAttendanceId = attendanceId;
-    $('#lm-player-name').textContent = `${a.first_name} ${a.last_name}`;
-    document.querySelector('input[name="lm-reason"][value="departed"]').checked = true;
-    $('#lm-note').value = '';
-    $('#lm-note-field').style.display = 'none';
-    $('#lm-error').style.display = 'none';
-    $('#leave-modal-backdrop').style.display = 'flex';
-    $('#lm-confirm').focus();
+// The "is leaving" box and the right-click menu live in leaving.js, shared
+// with the Rounds page.
+function leaveFor(attendanceId) {
+    openLeaveModal(attendance.find((x) => x.id === attendanceId), { onDone: refreshAttendance });
 }
-
-function closeLeaveModal() {
-    $('#leave-modal-backdrop').style.display = 'none';
-    leaveModalAttendanceId = null;
-}
-
-// The injury note box only shows for "Left injured".
-document.querySelectorAll('input[name="lm-reason"]').forEach((radio) => radio.addEventListener('change', () => {
-    const injured = document.querySelector('input[name="lm-reason"]:checked').value === 'injured';
-    $('#lm-note-field').style.display = injured ? '' : 'none';
-    if (injured) $('#lm-note').focus();
-}));
-
-$('#lm-cancel').addEventListener('click', closeLeaveModal);
-$('#leave-modal-backdrop').addEventListener('click', (e) => { if (e.target.id === 'leave-modal-backdrop') closeLeaveModal(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && leaveModalAttendanceId !== null) closeLeaveModal(); });
-
-$('#lm-confirm').addEventListener('click', async () => {
-    if (leaveModalAttendanceId === null) return;
-    const reason = document.querySelector('input[name="lm-reason"]:checked').value;
-    const body = reason === 'mistake'
-        ? { state: 'left', left_reason: 'no-show', payment_category_id: null, payment_amount_cents: null, payment_method: null, payment_note: null, first_time: false, new_member: false }
-        : { state: 'left', left_reason: reason, leave_note: reason === 'injured' ? $('#lm-note').value.trim() || null : null };
-    try {
-        await api(`/api/attendance/${leaveModalAttendanceId}`, { method: 'PUT', body: JSON.stringify(body) });
-        closeLeaveModal();
-        await refreshAttendance();
-    } catch (err) {
-        $('#lm-error').textContent = err.message;
-        $('#lm-error').style.display = 'block';
-    }
-});
 
 $('#here-tbody').addEventListener('click', (e) => {
     const cell = e.target.closest('.payment-cell');
@@ -913,33 +866,6 @@ $('#booked-tbody').addEventListener('click', (e) => {
 // that when a payment was keyed wrong; a right-click menu on the whole
 // row is the obvious place to look. Same actions as the existing
 // controls, just reachable.
-function hideRowMenu() {
-    $('#row-menu').style.display = 'none';
-    $('#row-menu').innerHTML = '';
-}
-
-function showRowMenu(e, title, items) {
-    e.preventDefault();
-    const menu = $('#row-menu');
-    menu.innerHTML = `<div class="ctx-title">${esc(title)}</div>` + items.map((it, i) =>
-        `<button type="button" data-idx="${i}" class="${it.danger ? 'danger' : ''}">${esc(it.label)}</button>`).join('');
-    menu.querySelectorAll('button').forEach((btn) => {
-        btn.addEventListener('click', () => { hideRowMenu(); items[Number(btn.dataset.idx)].run(); });
-    });
-    menu.style.display = 'block';
-    // Keep it on screen near the pointer.
-    const x = Math.min(e.clientX, window.innerWidth - menu.offsetWidth - 8);
-    const y = Math.min(e.clientY, window.innerHeight - menu.offsetHeight - 8);
-    menu.style.left = `${Math.max(4, x)}px`;
-    menu.style.top = `${Math.max(4, y)}px`;
-    menu.querySelector('button')?.focus();
-}
-
-document.addEventListener('click', (e) => { if (!e.target.closest('#row-menu')) hideRowMenu(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideRowMenu(); });
-window.addEventListener('scroll', hideRowMenu, true);
-window.addEventListener('resize', hideRowMenu);
-
 $('#here-tbody').addEventListener('contextmenu', (e) => {
     const tr = e.target.closest('tr[data-attendance-id]');
     if (!tr) return;
@@ -951,7 +877,7 @@ $('#here-tbody').addEventListener('contextmenu', (e) => {
     if (paymentTrackingEnabled) {
         items.push({ label: a.payment_category_id ? 'Change payment...' : 'Record payment...', run: () => openPaymentModal(attendanceId) });
     }
-    items.push({ label: 'Leaving / remove...', danger: true, run: () => openLeaveModal(attendanceId) });
+    items.push(...leavingMenuItems(a, { onDone: refreshAttendance }));
     showRowMenu(e, `${a.first_name} ${a.last_name}`, items);
 });
 
