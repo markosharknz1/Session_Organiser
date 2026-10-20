@@ -1,8 +1,8 @@
-## Game Scheduler v1.0.17
+## Game Scheduler v1.0.18
 
 ### Installing
 
-1. Download **`GameScheduler-v1.0.17.zip`** below.
+1. Download **`GameScheduler-v1.0.18.zip`** below.
 2. **Before extracting it:** right-click the ZIP > **Properties** > tick **Unblock** (bottom right) > **OK**. Without it, a Windows 11 PC with Smart App Control turned on refuses to run anything from the ZIP, and other PCs show a warning.
 3. Extract the ZIP anywhere - it's only the download - and double-click **`Game Scheduler.cmd`** inside the extracted folder.
 4. A setup window opens: choose where to install (the default is `C:\Apps\Game_Scheduler` - anywhere is fine **except your Documents folder or anything OneDrive syncs**), tick whether you want a desktop shortcut, and click **Install and start**.
@@ -13,15 +13,14 @@ Nothing is downloaded and nothing is installed on the computer - the app and its
 
 ### What's new
 
-- **Email a report from History.** *Email a report...* (or *Email this session's tally...* inside a session) sends a tally to any address you type, for one session or a whole month: payments by category and by cash/card/voucher, how many were pre-booked against how many arrived on the day, who left injured or early, session notes, and the list of players with grade, booking and payment. The box shows exactly what will be sent before you send it.
-- **Say why a player is leaving.** Double-clicking a checked-in player on the Check-in page (or right-click > *Leaving / remove...*) now asks: **Left early** (the default), **Left injured**, or **Checked in by mistake**. The first two keep them in the night's count with their payment; the third clears the payment details and takes them out of the night. Choosing *Left injured* lets you note what happened.
-- **Injury log.** History lists every injury with its date, session, player and note; click a note to add to it later. Injury notes also appear in the emailed reports.
-- **Restore a backup from inside the app.** Player Database > Database backups: **Restore** beside any backup, or **Restore from a file...** for a database kept elsewhere (also how to move the club to a new computer). It shows what's in the backup, saves your current data as one more backup first so a restore can be undone, and only works on the main computer.
-- **Backups include the club icon and round-end sound.** Each backup now carries them, and a restore puts them back as they were. Backups made by earlier versions restore the data and leave the current icon and sound alone.
-- **A check-in PIN.** Settings > Club details > Other computers now has two PINs. A device that signs in with the **check-in PIN** can start the day's session, check players in, book them, take payments, mark people as leaving and show the External Display - and nothing else: no Settings, player database, history, rounds or finishing the session, and it never receives the club's email passwords. The **full access PIN** works as before. The two must differ.
-- **Email settings show a Default flag per provider.** One tab each for SMTP2Go, Mailgun and Gmail, with the vendor's website and what each needs (SMTP2Go and Mailgun: the club's own domain and access to its DNS; Gmail: 2-Step Verification and an App Password). Fill in more than one; the one flagged Default is used to send.
+- **A player who leaves comes off the courts ahead - with a red box where they were.** Marking someone as leaving now takes them off every court that hasn't been played yet. Their place shows as their name, struck through, in a red box, and the court is flagged *needs a player* - on saved courts, on courts you're still building, and in the *Up next* panel. Drop a replacement in and the box goes. Courts already on court or played are never touched.
+- **"I'm off after the next one."** *Left early* now asks **when**: now, after the round on court, or after the next round. Pick a round and the player stays on the list and on their court until that round ends (a red *leaving after R*N tag beside their name), can't be put on a later court by hand or by auto-generate, and is marked as having left early the moment that round finishes. Right-click > *Staying after all* undoes it.
+- **Break for 1 game.** Right-click a player - on court, in the player pool, on a court being built, or on their Check-in row - and choose *Break for 1 game*. They sit out the next round: off that round's court (their place shown in an amber box), skipped by auto-generate, and listed under **On break this round** at the bottom of the player pool in their own look. *Back in play* ends the break early; otherwise it ends by itself once the round has been played.
+- **Right-click works on the Rounds page.** The same *Leaving / remove...* menu and box as the Check-in page, on names in the player pool, on courts being built and on the courts playing now or up next.
+- **A note about today when you start the session.** The start panel asks *Anything to note about today?* - Club Champs, public holiday, school holidays. It's kept as the session's notes (so it goes out with the emailed tally and can be edited with the Notes button) and History shows it under the session, so an unusual night's numbers come with their explanation.
 
 ### Notes
 
-- Pre-booked figures and the leaving reasons start from this version - earlier sessions show arrivals as "on the day" and no leavers.
+- A second computer signed in with the check-in PIN gets the *after round N* choice, the break, and the start-of-day note too.
+- In auto mode, if a player leaves during the break after the next round has already been generated, that court is left one short and the round waits until someone fills it (as before) - the red box now shows you where.
 - Your roster and history live in one local file (`game_scheduler.db`) - not included in this release, but backed up automatically to `Documents\GameScheduler\backups` every time the app opens.
