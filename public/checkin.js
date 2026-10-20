@@ -156,6 +156,10 @@ function renderTemplateChoice(template, date) {
     body.innerHTML = `
         <p><strong>${template.label}</strong> - ${template.start_time} to ${template.end_time}
         (${template.courts.length} court${template.courts.length === 1 ? '' : 's'}, ${template.default_format || 'doubles'}, mode: ${template.default_mode}${template.default_max_capacity ? `, guideline: ${template.default_max_capacity} players` : ''})</p>
+        <div class="field">
+            <label for="start-note">Anything to note about today? (optional)</label>
+            <input type="text" id="start-note" maxlength="300" placeholder="e.g. Club Champs, public holiday, school holidays, heatwave - explains unusual numbers later">
+        </div>
         <div class="template-choice">
             <button class="primary" id="same-as-usual">Same as usual</button>
             <button id="need-to-change">Need to change something</button>
@@ -166,7 +170,7 @@ function renderTemplateChoice(template, date) {
         try {
             openSession = await api('/api/sessions/start', {
                 method: 'POST',
-                body: JSON.stringify({ template_id: template.id, date }),
+                body: JSON.stringify({ template_id: template.id, date, notes: startNote() }),
             });
             await enterCheckinMode();
         } catch (err) {
@@ -227,6 +231,7 @@ async function renderChangeForm(template, date) {
                 body: JSON.stringify({
                     template_id: template.id,
                     date,
+                    notes: startNote(),
                     overrides: {
                         mode: $('#cf-mode').value,
                         format: $('#cf-format').value,
@@ -264,6 +269,10 @@ async function renderAdhocForm(date) {
                 ${activeCourts.map((c) => `<label><input type="checkbox" value="${c.id}" checked> Court ${c.court_number}</label>`).join('')}
             </div>
         </div>
+        <div class="field">
+            <label for="start-note">Anything to note about today? (optional)</label>
+            <input type="text" id="start-note" maxlength="300" placeholder="e.g. Club Champs, public holiday, school holidays, heatwave - explains unusual numbers later">
+        </div>
         <button class="primary" id="ah-submit">Start session</button>
     `;
     $('#ah-submit').onclick = async () => {
@@ -277,6 +286,7 @@ async function renderAdhocForm(date) {
                     mode: $('#ah-mode').value,
                     format: $('#ah-format').value,
                     court_ids,
+                    notes: startNote(),
                 }),
             });
             await enterCheckinMode();
@@ -284,6 +294,13 @@ async function renderAdhocForm(date) {
             showError(err.message);
         }
     };
+}
+
+// The "anything to note about today?" box on the start panel - becomes the
+// session's notes (editable later with the Notes button).
+function startNote() {
+    const el = $('#start-note');
+    return el ? el.value.trim() || null : null;
 }
 
 // --- Check-in mode ---

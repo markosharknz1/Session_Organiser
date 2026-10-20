@@ -91,6 +91,10 @@ router.post('/:id/send-summary-email', async (req, res) => {
 // to start a second one while one is already open - finish it first.
 router.post('/start', (req, res) => {
     const { template_id, date, overrides } = req.body;
+    // A comment about the day ("Club Champs", "public holiday") typed when
+    // starting - the session's notes, so it travels with the tally and
+    // History from the start rather than being added afterwards.
+    const notes = String(req.body.notes ?? (overrides && overrides.notes) ?? '').trim() || null;
     if (!template_id) return res.status(400).json({ error: 'template_id is required' });
     if (!date) return res.status(400).json({ error: 'date is required' });
 
@@ -138,10 +142,10 @@ router.post('/start', (req, res) => {
 
     try {
         const sessionId = store.insert(
-            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, game_minutes, break_minutes, max_capacity, current_phase)
-             VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, 'idle')`,
+            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, game_minutes, break_minutes, max_capacity, current_phase, notes)
+             VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, 'idle', ?)`,
             [template_id, date, template.label, template.start_time, template.end_time, o.location ?? null,
-                mode, format, game_minutes, break_minutes, max_capacity]
+                mode, format, game_minutes, break_minutes, max_capacity, notes]
         );
         for (const courtId of courtIds) {
             store.run('INSERT INTO session_courts (session_id, court_id, in_use) VALUES (?, ?, 1)', [sessionId, courtId]);
@@ -187,11 +191,11 @@ router.post('/', (req, res) => {
     }
     try {
         const id = store.insert(
-            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, game_minutes, break_minutes, max_capacity, current_phase)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, game_minutes, break_minutes, max_capacity, current_phase, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [b.template_id ?? null, b.date, b.label ?? null, b.scheduled_start_time ?? null, b.scheduled_end_time ?? null,
                 b.location ?? null, b.status ?? 'open', b.mode, format, b.game_minutes ?? null, b.break_minutes ?? null,
-                b.max_capacity ?? null, b.current_phase ?? 'idle']
+                b.max_capacity ?? null, b.current_phase ?? 'idle', String(b.notes ?? '').trim() || null]
         );
         if (Array.isArray(b.court_ids)) {
             for (const courtId of b.court_ids) {

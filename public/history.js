@@ -114,7 +114,7 @@ function renderSessionsTable() {
         tbody.innerHTML = sessions.map((s) => `
             <tr data-session-id="${s.id}">
                 <td>${formatDate(s.date)}</td>
-                <td>${esc(s.label || 'Session')} ${s.status === 'open' ? '<span class="badge">open</span>' : ''}</td>
+                <td>${esc(s.label || 'Session')} ${s.status === 'open' ? '<span class="badge">open</span>' : ''}${s.notes ? `<div class="session-note" title="${esc(s.notes)}">${esc(s.notes)}</div>` : ''}</td>
                 <td>${esc(s.mode)}</td>
                 <td class="num">${s.players_checked_in}</td>
                 <td class="num">${s.rounds_played}</td>
@@ -218,6 +218,8 @@ async function openSession(sessionId) {
         openedSessionId = sessionId;
         showView('session');
         $('#session-title').textContent = `${data.session.label || 'Session'} - ${formatDate(data.session.date)}`;
+        $('#session-note').textContent = data.session.notes || '';
+        $('#session-note').style.display = data.session.notes ? '' : 'none';
         mountTonightSummary($('#session-payment-summary'), sessionId);
         sessionRounds = data.rounds;
         renderRoundList();

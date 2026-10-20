@@ -179,6 +179,20 @@ label { font-size: 0.85rem; color: var(--muted); display: block; margin-bottom: 
 
 .field { margin-bottom: 14px; }
 
+/* The day's note ("Club Champs", "public holiday") beside a session in
+   History - what explains an unusual night's numbers. */
+.session-note {
+    color: #92400e;
+    font-size: 0.82rem;
+    font-style: italic;
+    margin: 2px 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 320px;
+}
+p.session-note { white-space: normal; max-width: none; font-size: 0.95rem; margin: -6px 0 10px; }
+
 /* Email settings: one tab per provider, the one that actually sends is flagged */
 .email-default-line { margin: 4px 0 10px; }
 .email-provider-tabs { display: flex; gap: 8px; flex-wrap: wrap; }

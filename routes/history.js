@@ -12,7 +12,7 @@ const router = express.Router();
 // List of sessions with summary counts, for the history landing page.
 router.get('/sessions', (req, res) => {
     const sessions = store.query(
-        `SELECT s.id, s.date, s.label, s.mode, s.status, s.template_id, s.scheduled_start_time,
+        `SELECT s.id, s.date, s.label, s.mode, s.status, s.template_id, s.scheduled_start_time, s.notes,
                 (SELECT COUNT(DISTINCT a.player_id) FROM attendance a WHERE a.session_id = s.id) AS players_checked_in,
                 (SELECT COUNT(DISTINCT g.round_number) FROM games g WHERE g.session_id = s.id AND g.status IN ('active','completed')) AS rounds_played,
                 (SELECT COUNT(*) FROM games g WHERE g.session_id = s.id AND g.status IN ('active','completed')) AS games_played
