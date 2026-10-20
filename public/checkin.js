@@ -513,6 +513,80 @@ $('#available-tbody').addEventListener('dblclick', (e) => {
     openCheckinModal(Number(tr.dataset.playerId));
 });
 
+$('#available-tbody').addEventListener('contextmenu', (e) => {
+    const tr = e.target.closest('tr[data-player-id]');
+    if (!tr) return;
+    const playerId = Number(tr.dataset.playerId);
+    const p = allPlayers.find((x) => x.id === playerId);
+    if (!p) return;
+    showRowMenu(e, `${p.first_name} ${p.last_name}`, [
+        { label: 'Arrived - check in...', run: () => openCheckinModal(playerId) },
+        { label: 'Book for today', run: () => bookPlayer(playerId) },
+        { label: 'Edit player...', run: () => openEditPlayerModal(playerId) },
+    ]);
+});
+
+// --- Edit a player's record (name, grade, gender, membership) ---
+// Right-click > Edit player... on any of the three tables. The same fields
+// the check-in box already lets staff fix, reachable without starting a
+// check-in - a wrong grade spotted on the Here list, a misspelt name.
+let editPlayerId = null;
+
+function openEditPlayerModal(playerId) {
+    const p = allPlayers.find((x) => x.id === playerId);
+    if (!p) return;
+    editPlayerId = playerId;
+    $('#ep-first').value = p.first_name;
+    $('#ep-last').value = p.last_name;
+    $('#ep-grade').value = p.skill_level;
+    $('#ep-gender').value = p.gender || '';
+    $('#ep-status').value = p.membership_status;
+    $('#ep-error').style.display = 'none';
+    $('#edit-player-modal-backdrop').style.display = 'flex';
+    $('#ep-first').focus();
+}
+
+function closeEditPlayerModal() {
+    $('#edit-player-modal-backdrop').style.display = 'none';
+    editPlayerId = null;
+}
+
+$('#ep-cancel').addEventListener('click', closeEditPlayerModal);
+$('#edit-player-modal-backdrop').addEventListener('click', (e) => { if (e.target.id === 'edit-player-modal-backdrop') closeEditPlayerModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && editPlayerId !== null) closeEditPlayerModal(); });
+$('#edit-player-modal-backdrop').addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') $('#ep-save').click(); });
+
+$('#ep-save').addEventListener('click', async () => {
+    if (editPlayerId === null) return;
+    const first_name = $('#ep-first').value.trim();
+    const last_name = $('#ep-last').value.trim();
+    if (!first_name || !last_name) {
+        $('#ep-error').textContent = 'First and last name are required.';
+        $('#ep-error').style.display = 'block';
+        return;
+    }
+    try {
+        const updated = await api(`/api/players/${editPlayerId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                first_name,
+                last_name,
+                skill_level: $('#ep-grade').value,
+                gender: $('#ep-gender').value || null,
+                membership_status: $('#ep-status').value,
+            }),
+        });
+        const idx = allPlayers.findIndex((x) => x.id === editPlayerId);
+        if (idx !== -1) allPlayers[idx] = updated;
+        closeEditPlayerModal();
+        // The Here and Booked rows carry the name and grade too.
+        if (openSession) await refreshAttendance(); else renderAvailableTable();
+    } catch (err) {
+        $('#ep-error').textContent = err.message;
+        $('#ep-error').style.display = 'block';
+    }
+});
+
 $('#available-tbody').addEventListener('click', (e) => {
     const addLink = e.target.closest('a[data-action="add-new"]');
     if (addLink) {
@@ -894,6 +968,7 @@ $('#here-tbody').addEventListener('contextmenu', (e) => {
     if (paymentTrackingEnabled) {
         items.push({ label: a.payment_category_id ? 'Change payment...' : 'Record payment...', run: () => openPaymentModal(attendanceId) });
     }
+    items.push({ label: 'Edit player...', run: () => openEditPlayerModal(playerId) });
     items.push(...leavingMenuItems(a, { onDone: refreshAttendance }));
     showRowMenu(e, `${a.first_name} ${a.last_name}`, items);
 });
@@ -907,6 +982,7 @@ $('#booked-tbody').addEventListener('contextmenu', (e) => {
     if (!a) return;
     showRowMenu(e, `${a.first_name} ${a.last_name} (booked)`, [
         { label: 'Arrived - check in...', run: () => openCheckinModal(playerId, attendanceId) },
+        { label: 'Edit player...', run: () => openEditPlayerModal(playerId) },
         { label: 'Cancel booking', danger: true, run: () => removeFromToday(attendanceId, playerId) },
     ]);
 });

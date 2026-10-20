@@ -153,6 +153,46 @@
     </section>
 </main>
 
+<!-- Right-click a player on any of the three tables > Edit player... -->
+<div id="edit-player-modal-backdrop" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+        <h3 style="margin: 0 0 12px;">Edit player</h3>
+        <div class="row">
+            <div class="field"><label for="ep-first">First name</label><input type="text" id="ep-first" maxlength="60"></div>
+            <div class="field"><label for="ep-last">Last name</label><input type="text" id="ep-last" maxlength="60"></div>
+        </div>
+        <div class="row">
+            <div class="field">
+                <label for="ep-grade">Grade</label>
+                <select id="ep-grade">
+                    <option value="A">A</option><option value="B">B</option>
+                    <option value="C">C</option><option value="D">D</option><option value="E">E</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="ep-gender">Gender</label>
+                <select id="ep-gender">
+                    <option value="">-</option><option value="F">Female</option><option value="M">Male</option><option value="O">Other</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="ep-status">Membership</label>
+                <select id="ep-status">
+                    <option value="guest">Guest</option>
+                    <option value="active">Active member</option>
+                    <option value="lapsed">Lapsed member</option>
+                </select>
+            </div>
+        </div>
+        <p class="muted" style="margin:0 0 10px;">Changes the player's record for good - the grade shown on tonight's courts updates too. Contact details and notes are edited in the Player Database.</p>
+        <p class="error-banner" id="ep-error" style="display:none;"></p>
+        <div class="row" style="justify-content: flex-end;">
+            <button id="ep-cancel">Cancel</button>
+            <button class="primary" id="ep-save">Save</button>
+        </div>
+    </div>
+</div>
+
 <div id="payment-modal-backdrop" class="modal-backdrop" style="display:none;">
     <div class="modal">
         <h3>Record payment - <span id="pm-player-name"></span></h3>
