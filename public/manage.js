@@ -536,7 +536,7 @@ async function renderRoundGamesPanel() {
         .join('')
         // a staged court someone has left: their place, boxed in red
         + (g.vacated || []).filter((v) => v.side === sideNum)
-            .map((v) => `<div class="active-game-player vacated"><s>${esc(v.first_name)} ${esc(v.last_name)}</s> <span class="vacated-why">${attendanceFor(v.player_id)?.leave_after_round ? `leaving after round ${attendanceFor(v.player_id).leave_after_round}` : 'left'} - needs replacing</span></div>`)
+            .map((v) => { const why = vacatedWhy(v.player_id, viewedRound); return `<div class="active-game-player vacated ${why === 'on a break' ? 'on-break' : ''}"><s>${esc(v.first_name)} ${esc(v.last_name)}</s> <span class="vacated-why">${why} - needs replacing</span></div>`; })
             .join('');
     $('#active-games-grid').innerHTML = games.map((g) => `
         <div class="active-game-card">
@@ -591,10 +591,20 @@ function attendanceFor(playerId) {
     return attendancePool.find((p) => p.player_id === playerId) || null;
 }
 
-// Here, and not leaving before the given round.
+// Here, not leaving before the given round, and not on a break for it.
 function canPlayRound(playerId, round) {
     const a = attendanceFor(playerId);
-    return !!a && (!a.leave_after_round || a.leave_after_round >= round);
+    return !!a && (!a.leave_after_round || a.leave_after_round >= round) && a.rest_round !== round;
+}
+
+// Why a place on a court for `round` is empty: the player left, is leaving
+// before it, or is sitting it out.
+function vacatedWhy(playerId, round) {
+    const a = attendanceFor(playerId);
+    if (!a) return 'left';
+    if (a.rest_round === round) return 'on a break';
+    if (a.leave_after_round && a.leave_after_round < round) return `leaving after round ${a.leave_after_round}`;
+    return 'left';
 }
 
 // A court still being built (not saved yet, or mid-edit) only exists in
@@ -629,10 +639,9 @@ function vacatedFor(st, state, sideNum) {
 }
 
 function vacatedSlotHtml(v) {
-    const a = attendanceFor(v.player_id);
     const name = v.name || knownNames.get(v.player_id) || `#${v.player_id}`;
-    const why = a && a.leave_after_round ? `leaving after round ${a.leave_after_round}` : 'left';
-    return `<div class="slot empty vacated" title="${esc(name)} ${why} - drop another player here"><span><s>${esc(name)}</s></span><span class="vacated-why">${why}</span></div>`;
+    const why = vacatedWhy(v.player_id, buildRound);
+    return `<div class="slot empty vacated ${why === 'on a break' ? 'on-break' : ''}" title="${esc(name)} ${why} - drop another player here"><span><s>${esc(name)}</s></span><span class="vacated-why">${why}</span></div>`;
 }
 
 // --- Builder ---
@@ -710,6 +719,9 @@ function poolPlayerHtml(p, rested) {
 }
 
 function renderBuilder() {
+    // An attendance change can arrive before the builder has loaded its
+    // round (the page is still opening) - nothing to draw yet.
+    if (!sessionCourts.length || !sessionCourts.every((c) => buildState[c.court_id])) return;
     const grid = $('#courts-grid');
     grid.innerHTML = sessionCourts.map((c) => renderCourtCard(c)).join('');
     wireCourtCardEvents();
@@ -736,6 +748,16 @@ function renderBuilder() {
             readyToPlay.length ? `<div class="pool-section-label">Ready to play (${readyToPlay.length})</div>${readyToPlay.map((p) => poolPlayerHtml(p, true)).join('')}` : '',
             playedLastGame.length ? `<div class="pool-section-label">Played last game (${playedLastGame.length})</div>${playedLastGame.map((p) => poolPlayerHtml(p, false)).join('')}` : '',
         ].join('');
+    }
+
+    // Players sitting this round out ("Break for 1 game") - listed under
+    // everyone else, greyed and not draggable; right-click to end the break.
+    const onBreak = attendancePool.filter((p) => p.rest_round === buildRound && !used.has(p.player_id)).sort(byLastName);
+    if (onBreak.length) {
+        poolEl.insertAdjacentHTML('beforeend', `<div class="pool-section-label">On break this round (${onBreak.length})</div>` + onBreak.map((p) => `
+        <div class="pool-player on-break" data-player-id="${p.player_id}" title="Sitting out round ${p.rest_round} - right-click to put them back in play">
+            <span>${p.first_name} ${p.last_name}${skillBadge(p.skill_level)}${genderBadge(p.gender)} <span class="break-badge">break</span></span>
+        </div>`).join(''));
     }
 
     poolEl.querySelectorAll('.pool-player').forEach((el) => {

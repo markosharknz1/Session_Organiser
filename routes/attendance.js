@@ -1,7 +1,7 @@
 const express = require('express');
 const store = require('../db/store');
 const { broadcast } = require('../lib/eventBus');
-const { vacateStagedGames } = require('../lib/leaving');
+const { vacateStagedGames, vacateStagedRound, clearVacanciesFor } = require('../lib/leaving');
 
 const router = express.Router();
 
@@ -153,15 +153,29 @@ router.put('/attendance/:id', (req, res) => {
             }
         }
     }
+    // "Break for 1 game": the one round they sit out - must be one still to come.
+    let restRound = null;
+    if (merged.state !== 'left' && merged.rest_round !== null && merged.rest_round !== undefined && merged.rest_round !== '') {
+        restRound = Number(merged.rest_round);
+        if (!Number.isInteger(restRound) || restRound < 1) return res.status(400).json({ error: 'rest_round must be a round number' });
+        if (restRound !== existing.rest_round) {
+            const started = store.queryOne(
+                `SELECT MAX(round_number) AS m FROM games WHERE session_id = ? AND status IN ('active', 'completed')`,
+                [existing.session_id]
+            ).m || 0;
+            if (restRound <= started) return res.status(400).json({ error: `Round ${restRound} is already under way - the break can only be for a round still to come.` });
+        }
+    }
     try {
         store.run(
-            `UPDATE attendance SET state=?, left_reason=?, leave_note=?, leave_after_round=?, payment_category_id=?, payment_amount_cents=?, payment_method=?, payment_note=?, first_time=?, new_member=?
+            `UPDATE attendance SET state=?, left_reason=?, leave_note=?, leave_after_round=?, rest_round=?, payment_category_id=?, payment_amount_cents=?, payment_method=?, payment_note=?, first_time=?, new_member=?
              WHERE id=?`,
             [
                 merged.state,
                 merged.state === 'left' ? merged.left_reason : null,
                 merged.state === 'left' ? (String(merged.leave_note || '').trim() || null) : null,
                 leaveAfterRound,
+                restRound,
                 merged.payment_category_id ?? null,
                 merged.payment_amount_cents ?? null,
                 merged.payment_method ?? null,
@@ -187,12 +201,14 @@ router.put('/attendance/:id', (req, res) => {
         } else if (existing.leave_after_round !== null && existing.leave_after_round !== undefined) {
             // Staying after all: their old spots are no longer "left" ones
             // (they go back in the pool to be placed again).
-            const cleared = store.query(
-                `SELECT gv.game_id FROM game_vacancies gv JOIN games g ON g.id = gv.game_id WHERE gv.player_id = ? AND g.session_id = ?`,
-                [existing.player_id, existing.session_id]
-            );
-            for (const row of cleared) store.run('DELETE FROM game_vacancies WHERE game_id = ? AND player_id = ?', [row.game_id, existing.player_id]);
-            affectedStagedGames = cleared.length;
+            affectedStagedGames = clearVacanciesFor(existing.session_id, existing.player_id);
+        }
+        // A break: off that one round's court (place remembered); back in
+        // play: the marker goes.
+        if (merged.state !== 'left' && restRound !== null && restRound !== existing.rest_round) {
+            affectedStagedGames += vacateStagedRound(existing.session_id, existing.player_id, restRound);
+        } else if (restRound === null && existing.rest_round) {
+            affectedStagedGames += clearVacanciesFor(existing.session_id, existing.player_id, existing.rest_round);
         }
 
         store.persist();

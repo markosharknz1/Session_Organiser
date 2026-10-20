@@ -169,16 +169,41 @@
         if (onDone) await onDone();
     }
 
-    // The small red tag shown beside a player who is leaving after a round.
+    // --- Break for 1 game ---
+    // The player sits out the next round to be played - the one after the
+    // round on court now, or the one about to start - and is back in the
+    // pool once it has been played. Cleared by endBreak(), or on its own
+    // when that round ends.
+    async function takeBreak(a, { onDone } = {}) {
+        const status = await api(`/api/sessions/${a.session_id}/rounds/status`);
+        await api(`/api/attendance/${a.id}`, { method: 'PUT', body: JSON.stringify({ rest_round: status.next_round_number }) });
+        if (onDone) await onDone();
+    }
+
+    async function endBreak(a, { onDone } = {}) {
+        await api(`/api/attendance/${a.id}`, { method: 'PUT', body: JSON.stringify({ rest_round: null }) });
+        if (onDone) await onDone();
+    }
+
+    // The small tags shown beside a player: red for leaving after a round,
+    // amber for a break.
     function leavingBadge(a) {
-        return a && a.leave_after_round
-            ? ` <span class="leaving-badge" title="Leaving after round ${a.leave_after_round}">leaving after R${a.leave_after_round}</span>`
-            : '';
+        if (!a) return '';
+        let html = '';
+        if (a.leave_after_round) html += ` <span class="leaving-badge" title="Leaving after round ${a.leave_after_round}">leaving after R${a.leave_after_round}</span>`;
+        if (a.rest_round) html += ` <span class="break-badge" title="Having a break - sits out round ${a.rest_round}">break R${a.rest_round}</span>`;
+        return html;
     }
 
     // The menu entries every page offers for a checked-in player.
     function leavingMenuItems(a, { onDone } = {}) {
         const items = [];
+        const report = (err) => (typeof showError === 'function' ? showError : alert)(err.message);
+        if (a.rest_round) {
+            items.push({ label: `Back in play (ends the break - was sitting out round ${a.rest_round})`, run: () => endBreak(a, { onDone }).catch(report) });
+        } else {
+            items.push({ label: 'Break for 1 game (sits out the next round)', run: () => takeBreak(a, { onDone }).catch(report) });
+        }
         if (a.leave_after_round) {
             items.push({ label: `Staying after all (was leaving after round ${a.leave_after_round})`, run: () => stayAfterAll(a, { onDone }).catch((err) => (typeof showError === 'function' ? showError : alert)(err.message)) });
         }
@@ -186,5 +211,5 @@
         return items;
     }
 
-    Object.assign(window, { showRowMenu, hideRowMenu, openLeaveModal, stayAfterAll, leavingBadge, leavingMenuItems });
+    Object.assign(window, { showRowMenu, hideRowMenu, openLeaveModal, stayAfterAll, takeBreak, endBreak, leavingBadge, leavingMenuItems });
 })();

@@ -111,9 +111,13 @@ function validateLineup({ sessionId, courtId, roundNumber, format, players, excl
             errors.push(`player ${playerId} is not present in this session`);
             continue;
         }
+        const name = () => { const who = store.queryOne('SELECT first_name, last_name FROM players WHERE id = ?', [playerId]); return who ? `${who.first_name} ${who.last_name}` : `player ${playerId}`; };
         if (attendance.leave_after_round !== null && attendance.leave_after_round !== undefined && Number.isInteger(roundNumber) && roundNumber > attendance.leave_after_round) {
-            const who = store.queryOne('SELECT first_name, last_name FROM players WHERE id = ?', [playerId]);
-            errors.push(`${who ? `${who.first_name} ${who.last_name}` : `player ${playerId}`} is leaving after round ${attendance.leave_after_round}`);
+            errors.push(`${name()} is leaving after round ${attendance.leave_after_round}`);
+            continue;
+        }
+        if (attendance.rest_round !== null && attendance.rest_round !== undefined && roundNumber === attendance.rest_round) {
+            errors.push(`${name()} is having a break in round ${roundNumber}`);
             continue;
         }
         const doubleBooked = store.queryOne(

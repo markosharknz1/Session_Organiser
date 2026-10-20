@@ -436,6 +436,8 @@ function ensureAttendanceWasBooked(db) {
     if (!cols.includes('leave_note')) db.run(`ALTER TABLE attendance ADD COLUMN leave_note TEXT`);
     // "Leaving after round N" - the last round the player is staying for.
     if (!cols.includes('leave_after_round')) db.run(`ALTER TABLE attendance ADD COLUMN leave_after_round INTEGER`);
+    // "Break for 1 game" - the round the player sits out.
+    if (!cols.includes('rest_round')) db.run(`ALTER TABLE attendance ADD COLUMN rest_round INTEGER`);
 }
 
 // Names saved with spaces around them (an older quick-add, a hand-edited

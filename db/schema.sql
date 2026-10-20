@@ -138,7 +138,10 @@ CREATE TABLE IF NOT EXISTS attendance (
     -- "I'm off after the next round": the last round this player is staying
     -- for. They can't be put on a court in a later round, and are marked as
     -- having left early when that round ends. NULL = staying.
-    leave_after_round INTEGER
+    leave_after_round INTEGER,
+    -- "Break for 1 game": the one round this player sits out. They can't be
+    -- put on a court for it; cleared when that round ends. NULL = playing.
+    rest_round INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS games (

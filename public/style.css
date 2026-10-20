@@ -624,6 +624,33 @@ nav.app-nav a.active {
     white-space: nowrap;
 }
 
+/* Break for 1 game: amber, and clearly not in play. */
+.break-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border: 1px solid #d97706;
+    border-radius: 999px;
+    color: #b45309;
+    background: #fffbeb;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.pool-player.on-break {
+    cursor: default;
+    background: #fffbeb;
+    border-color: #fcd34d;
+    border-style: dashed;
+    color: #92400e;
+    font-style: italic;
+}
+.slot.empty.vacated.on-break, .active-game-player.vacated.on-break {
+    border-color: #d97706;
+    background: #fffbeb;
+    color: #b45309;
+}
+
 .slot .remove-slot {
     cursor: pointer;
     color: var(--danger);
