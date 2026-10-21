@@ -19,4 +19,4 @@ Nothing is downloaded and nothing is installed on the computer - the app and its
 ### Notes
 
 - A second computer signed in with the check-in PIN can edit players this way too (it already could from the check-in box).
-- Your roster and history live in one local file (`game_scheduler.db`) - not included in this release, but backed up automatically to `Documents\GameSchedulerackups` every time the app opens.
+- Your roster and history live in one local file (`game_scheduler.db`) - not included in this release, but backed up automatically to `Documents\GameScheduler\backups` every time the app opens.
