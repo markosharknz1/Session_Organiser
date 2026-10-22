@@ -275,6 +275,21 @@ function renderRoundDetail(idx) {
     `;
     $('#back-to-rounds').addEventListener('click', renderRoundList);
     // Won buttons (a night that recorded results): set, change or clear.
+    container.querySelectorAll('input[data-score-game]').forEach((input) => {
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+        input.addEventListener('change', async () => {
+            const gameId = Number(input.dataset.scoreGame);
+            const body = scoreBodyFor(container, gameId);
+            if (!body) return;
+            try {
+                const game = round.games.find((g) => g.id === gameId);
+                game.result = await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify(body) });
+                renderRoundDetail(idx);
+            } catch (err) {
+                showError(err.message);
+            }
+        });
+    });
     container.querySelectorAll('button[data-result-game]').forEach((btn) => btn.addEventListener('click', async () => {
         const gameId = Number(btn.dataset.resultGame);
         const side = Number(btn.dataset.side);
@@ -315,15 +330,29 @@ function renderGameRow(g) {
     const wonBtn = (n) => sessionRecordsResults
         ? `<button type="button" class="small result-btn ${winner === n ? 'won' : ''}" data-result-game="${g.id}" data-side="${n}">${winner === n ? '&check; Won' : 'Won'}</button>`
         : '';
+    // Scores: inputs on a night that records results, plain text otherwise.
+    const scores = sessionRecordsResults
+        ? scoreRowHtml(g)
+        : (g.result && g.result.side1_score !== null && g.result.side2_score !== null
+            ? `<span class="score-text">${g.result.side1_score} - ${g.result.side2_score}</span>` : '');
     return `
         <div class="history-game">
             <span class="court-tag">Court ${g.court_number}</span>
             <span class="team ${winner === 1 ? 'won' : ''}">${side(1)}${wonBtn(1)}</span>
             <span class="vs">vs</span>
             <span class="team ${winner === 2 ? 'won' : ''}">${side(2)}${wonBtn(2)}</span>
+            ${scores}
             <span class="muted">${esc(g.format)}</span>
         </div>
     `;
+}
+
+// "21-18" with this player's own side first, when scores were recorded.
+function playerScoreText(g) {
+    if (g.side1_score === null || g.side1_score === undefined || g.side2_score === null || g.side2_score === undefined) return '';
+    const mine = g.side === 1 ? g.side1_score : g.side2_score;
+    const theirs = g.side === 1 ? g.side2_score : g.side1_score;
+    return ` <span class="score-text">${mine}-${theirs}</span>`;
 }
 
 // --- One player's history ---
@@ -358,7 +387,7 @@ async function openPlayer(playerId) {
                 <td class="num">${skillTag(g.skill_level_at_time)}</td>
                 <td>${g.partners.map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillTag(p.skill_level_at_time)}`).join(', ') || '<span class="muted">-</span>'}</td>
                 <td>${g.opponents.map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillTag(p.skill_level_at_time)}`).join(', ')}</td>
-                <td class="num">${g.outcome === 'won' ? '<span class="outcome won">W</span>' : g.outcome === 'lost' ? '<span class="outcome lost">L</span>' : '<span class="muted">-</span>'}</td>
+                <td class="num">${g.outcome === 'won' ? '<span class="outcome won">W</span>' : g.outcome === 'lost' ? '<span class="outcome lost">L</span>' : '<span class="muted">-</span>'}${playerScoreText(g)}</td>
             </tr>
         `).join('');
     } catch (err) {

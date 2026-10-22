@@ -509,16 +509,27 @@ function statusForViewedRound() {
     return 'completed';
 }
 
+// Jumps to the latest/most relevant round when the round itself moves on
+// (a round starts or ends, the next one is staged) - but a refresh for any
+// other reason (a result entered, a player leaving) keeps the round being
+// looked at, so last round's scores can be typed in while the next one is
+// on court without the panel snapping away after every box.
+let lastRoundKey = null;
+
 async function loadActiveGames() {
     const panel = $('#active-games-panel');
     const target = defaultViewedRound();
     if (target < 1) {
         panel.style.display = 'none';
         viewedRound = null;
+        lastRoundKey = null;
         return;
     }
     panel.style.display = 'block';
-    viewedRound = target; // jump to the latest/most relevant round whenever round status refreshes
+    const roundKey = `${roundStatus.current_phase}:${roundStatus.current_round}:${roundStatus.next_round_number}:${roundStatus.staged_next_count > 0}`;
+    const keepViewed = roundKey === lastRoundKey && viewedRound && viewedRound >= 1 && viewedRound <= target;
+    lastRoundKey = roundKey;
+    if (!keepViewed) viewedRound = target;
     await renderRoundGamesPanel();
 }
 
@@ -552,6 +563,7 @@ async function renderRoundGamesPanel() {
             <h4>Court ${courtNumberFor(g.court_id)} <span class="muted">(${g.format})</span></h4>
             <div class="active-game-side ${g.result && g.result.winner_side === 1 ? 'won' : ''}">${sideLines(g, 1)}${wonBtn(g, 1)}</div>
             ${g.format === 'threes' ? '' : `<div class="active-game-side ${g.result && g.result.winner_side === 2 ? 'won' : ''}">${sideLines(g, 2)}${wonBtn(g, 2)}</div>`}
+            ${canRecord(g) ? scoreRowHtml(g) : ''}
         </div>
     `).join('') || `<p class="muted">${status === 'staged' ? 'Nothing staged for next round yet.' : 'No games recorded for this round.'}</p>`;
 
@@ -567,6 +579,26 @@ async function renderRoundGamesPanel() {
         noteEl.style.display = 'none';
     }
 }
+
+// Scores typed in: saved once both are in and differ (the winner follows
+// from them). Clearing both keeps the winner and drops the scores.
+$('#active-games-grid').addEventListener('change', async (e) => {
+    const input = e.target.closest('input[data-score-game]');
+    if (!input) return;
+    const gameId = Number(input.dataset.scoreGame);
+    const body = scoreBodyFor($('#active-games-grid'), gameId);
+    if (!body) return;
+    try {
+        await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify(body) });
+        showError('');
+        await renderRoundGamesPanel();
+    } catch (err) {
+        showError(err.message);
+    }
+});
+$('#active-games-grid').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.matches('input[data-score-game]')) e.target.blur();
+});
 
 $('#active-games-grid').addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-result-game]');
