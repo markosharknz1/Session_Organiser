@@ -3,6 +3,7 @@ const store = require('../db/store');
 const { broadcast } = require('../lib/eventBus');
 const { getNextRoundNumber } = require('../lib/roundLifecycle');
 const { settleVacancies } = require('../lib/leaving');
+const { ResultError, recordResult, clearResult, resultFor } = require('../lib/results');
 
 const router = express.Router();
 
@@ -35,7 +36,8 @@ function gameWithPlayers(gameId) {
          WHERE gv.game_id = ? ORDER BY gv.side, p.last_name`,
         [gameId]
     );
-    return { ...game, players, vacated };
+    // result: who won (null until recorded) - see lib/results.js.
+    return { ...game, players, vacated, result: resultFor(gameId) };
 }
 
 // Validates a proposed lineup against the schema rules and current session
@@ -320,6 +322,31 @@ router.put('/sessions/:sessionId/games/batch', (req, res) => {
         res.json(savedGameIds.map(gameWithPlayers));
     } catch (err) {
         res.status(400).json({ error: err.message });
+    }
+});
+
+// Who won. Main computer only (not in the check-in PIN's allowlist).
+router.put('/games/:id/result', (req, res) => {
+    try {
+        const result = recordResult(Number(req.params.id), req.body || {});
+        store.persist();
+        const game = store.queryOne('SELECT session_id FROM games WHERE id = ?', [req.params.id]);
+        broadcast('game', { session_id: game.session_id });
+        res.json(result);
+    } catch (err) {
+        res.status(err instanceof ResultError ? err.status : 400).json({ error: err.message });
+    }
+});
+
+router.delete('/games/:id/result', (req, res) => {
+    try {
+        clearResult(Number(req.params.id));
+        store.persist();
+        const game = store.queryOne('SELECT session_id FROM games WHERE id = ?', [req.params.id]);
+        broadcast('game', { session_id: game.session_id });
+        res.status(204).end();
+    } catch (err) {
+        res.status(err instanceof ResultError ? err.status : 400).json({ error: err.message });
     }
 });
 

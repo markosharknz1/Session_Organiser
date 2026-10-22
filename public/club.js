@@ -146,6 +146,7 @@ async function loadSettings() {
     $('#cs-break').value = s.default_break_minutes;
     $('#cs-square').checked = !!s.square_enabled;
     $('#cs-gender-aware').checked = !!s.gender_aware_pairing;
+    $('#cs-results').checked = !!s.record_results;
     $('#cs-network').checked = !!s.allow_network_access;
     $('#icon-preview').src = `/api/branding/icon?v=${s.club_icon_ver || 0}`;
     emailDefaultProvider = s.email_provider || 'smtp2go';
@@ -189,6 +190,7 @@ $('#cs-defaults-save').addEventListener('click', () => saveClubFields({
     default_break_minutes: Number($('#cs-break').value),
     square_enabled: $('#cs-square').checked,
     gender_aware_pairing: $('#cs-gender-aware').checked,
+    record_results: $('#cs-results').checked,
 }, '#cs-defaults-saved'));
 
 // --- Other computers: let a second PC / TV open this computer's app ---

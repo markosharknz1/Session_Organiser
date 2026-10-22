@@ -220,6 +220,11 @@ function ensureColumns(db) {
         db.run(`ALTER TABLE sessions ADD COLUMN format TEXT NOT NULL DEFAULT 'doubles' CHECK (format IN ('doubles','singles','threes'))`);
     }
 
+    if (!sessionColsNow.includes('record_results')) {
+        // Results (who won) recorded tonight? Off unless ticked at the start.
+        db.run(`ALTER TABLE sessions ADD COLUMN record_results INTEGER NOT NULL DEFAULT 0 CHECK (record_results IN (0,1))`);
+    }
+
     const gamesCols = all(db, `PRAGMA table_info(games)`).map((c) => c.name);
     if (!gamesCols.includes('started_at')) {
         // When the game actually went on court - created_at is when it was
@@ -271,6 +276,10 @@ function ensureColumns(db) {
     for (const col of ['access_pin_hash', 'access_secret', 'desk_pin_hash']) {
         // The access PIN for other devices - see lib/access.js.
         if (!clubSettingsCols.includes(col)) db.run(`ALTER TABLE club_settings ADD COLUMN ${col} TEXT`);
+    }
+    if (!clubSettingsCols.includes('record_results')) {
+        // The default for the "record game results tonight" tick on the start panel.
+        db.run(`ALTER TABLE club_settings ADD COLUMN record_results INTEGER NOT NULL DEFAULT 0 CHECK (record_results IN (0,1))`);
     }
     if (!clubSettingsCols.includes('allow_network_access')) {
         // Off by default: the server binds to 127.0.0.1 and Windows never

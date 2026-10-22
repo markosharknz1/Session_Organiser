@@ -530,6 +530,15 @@ async function renderRoundGamesPanel() {
     $('#active-games-panel').classList.toggle('up-next', status === 'staged');
     $('#active-round-minus').disabled = viewedRound <= 1;
     $('#active-round-plus').disabled = viewedRound >= defaultViewedRound();
+    // Results (who won): a Won button under each side once the game is on
+    // court or played, when tonight is recording them. Threes has no sides.
+    const resultsOn = !!(openSession && openSession.record_results) && status !== 'staged';
+    const canRecord = (g) => resultsOn && g.format !== 'threes';
+    const wonBtn = (g, sideNum) => {
+        if (!canRecord(g)) return '';
+        const won = g.result && g.result.winner_side === sideNum;
+        return `<button type="button" class="small result-btn ${won ? 'won' : ''}" data-result-game="${g.id}" data-side="${sideNum}" title="${won ? 'Click again to clear this result' : 'This side won'}">${won ? '&check; Won' : 'Won'}</button>`;
+    };
     const sideLines = (g, sideNum) => g.players
         .filter((p) => p.side === sideNum)
         .map((p) => `<div class="active-game-player" data-player-id="${p.player_id}">${p.first_name} ${p.last_name}${skillBadge(p.skill_level_at_time)}${gamesCount(p.games_played)}${leavingBadge(attendanceFor(p.player_id))}</div>`)
@@ -541,11 +550,41 @@ async function renderRoundGamesPanel() {
     $('#active-games-grid').innerHTML = games.map((g) => `
         <div class="active-game-card">
             <h4>Court ${courtNumberFor(g.court_id)} <span class="muted">(${g.format})</span></h4>
-            <div class="active-game-side">${sideLines(g, 1)}</div>
-            ${g.format === 'threes' ? '' : `<div class="active-game-side">${sideLines(g, 2)}</div>`}
+            <div class="active-game-side ${g.result && g.result.winner_side === 1 ? 'won' : ''}">${sideLines(g, 1)}${wonBtn(g, 1)}</div>
+            ${g.format === 'threes' ? '' : `<div class="active-game-side ${g.result && g.result.winner_side === 2 ? 'won' : ''}">${sideLines(g, 2)}${wonBtn(g, 2)}</div>`}
         </div>
     `).join('') || `<p class="muted">${status === 'staged' ? 'Nothing staged for next round yet.' : 'No games recorded for this round.'}</p>`;
+
+    // "3 of 5 results entered" beside the heading - a reminder, never a gate.
+    const eligible = games.filter(canRecord);
+    const noteEl = $('#results-note');
+    if (eligible.length) {
+        const done = eligible.filter((g) => g.result).length;
+        noteEl.textContent = `${done} of ${eligible.length} result${eligible.length === 1 ? '' : 's'} entered`;
+        noteEl.className = `muted results-note ${done === eligible.length ? 'complete' : ''}`;
+        noteEl.style.display = '';
+    } else {
+        noteEl.style.display = 'none';
+    }
 }
+
+$('#active-games-grid').addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-result-game]');
+    if (!btn) return;
+    const gameId = Number(btn.dataset.resultGame);
+    const side = Number(btn.dataset.side);
+    try {
+        if (btn.classList.contains('won')) {
+            await api(`/api/games/${gameId}/result`, { method: 'DELETE' });
+        } else {
+            await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify({ winner_side: side }) });
+        }
+        showError('');
+        await renderRoundGamesPanel();
+    } catch (err) {
+        showError(err.message);
+    }
+});
 
 $('#active-round-minus').addEventListener('click', () => {
     if (viewedRound > 1) { viewedRound -= 1; renderRoundGamesPanel().catch((err) => showError(err.message)); }

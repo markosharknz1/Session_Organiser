@@ -95,6 +95,10 @@ router.post('/start', (req, res) => {
     // starting - the session's notes, so it travels with the tally and
     // History from the start rather than being added afterwards.
     const notes = String(req.body.notes ?? (overrides && overrides.notes) ?? '').trim() || null;
+    // Record who wins tonight? The club's default unless the start panel says otherwise.
+    const recordResults = req.body.record_results === undefined
+        ? (store.queryOne('SELECT record_results FROM club_settings WHERE id = 1') || {}).record_results ? 1 : 0
+        : (req.body.record_results ? 1 : 0);
     if (!template_id) return res.status(400).json({ error: 'template_id is required' });
     if (!date) return res.status(400).json({ error: 'date is required' });
 
@@ -142,10 +146,10 @@ router.post('/start', (req, res) => {
 
     try {
         const sessionId = store.insert(
-            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, game_minutes, break_minutes, max_capacity, current_phase, notes)
-             VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, 'idle', ?)`,
+            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, game_minutes, break_minutes, max_capacity, current_phase, notes, record_results)
+             VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, 'idle', ?, ?)`,
             [template_id, date, template.label, template.start_time, template.end_time, o.location ?? null,
-                mode, format, game_minutes, break_minutes, max_capacity, notes]
+                mode, format, game_minutes, break_minutes, max_capacity, notes, recordResults]
         );
         for (const courtId of courtIds) {
             store.run('INSERT INTO session_courts (session_id, court_id, in_use) VALUES (?, ?, 1)', [sessionId, courtId]);
@@ -191,11 +195,14 @@ router.post('/', (req, res) => {
     }
     try {
         const id = store.insert(
-            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, game_minutes, break_minutes, max_capacity, current_phase, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, game_minutes, break_minutes, max_capacity, current_phase, notes, record_results)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [b.template_id ?? null, b.date, b.label ?? null, b.scheduled_start_time ?? null, b.scheduled_end_time ?? null,
                 b.location ?? null, b.status ?? 'open', b.mode, format, b.game_minutes ?? null, b.break_minutes ?? null,
-                b.max_capacity ?? null, b.current_phase ?? 'idle', String(b.notes ?? '').trim() || null]
+                b.max_capacity ?? null, b.current_phase ?? 'idle', String(b.notes ?? '').trim() || null,
+                b.record_results === undefined
+                    ? ((store.queryOne('SELECT record_results FROM club_settings WHERE id = 1') || {}).record_results ? 1 : 0)
+                    : (b.record_results ? 1 : 0)]
         );
         if (Array.isArray(b.court_ids)) {
             for (const courtId of b.court_ids) {
@@ -258,11 +265,11 @@ router.put('/:id', (req, res) => {
     }
     try {
         store.run(
-            `UPDATE sessions SET template_id=?, date=?, label=?, scheduled_start_time=?, scheduled_end_time=?, location=?, status=?, mode=?, format=?, game_minutes=?, break_minutes=?, max_capacity=?, current_phase=?, phase_started_at=?, phase_ends_at=?, notes=?
+            `UPDATE sessions SET template_id=?, date=?, label=?, scheduled_start_time=?, scheduled_end_time=?, location=?, status=?, mode=?, format=?, game_minutes=?, break_minutes=?, max_capacity=?, current_phase=?, phase_started_at=?, phase_ends_at=?, notes=?, record_results=?
              WHERE id=?`,
             [merged.template_id, merged.date, merged.label, merged.scheduled_start_time, merged.scheduled_end_time,
                 merged.location, merged.status, merged.mode, merged.format ?? 'doubles', merged.game_minutes, merged.break_minutes, merged.max_capacity,
-                merged.current_phase, merged.phase_started_at, merged.phase_ends_at, merged.notes ?? null, req.params.id]
+                merged.current_phase, merged.phase_started_at, merged.phase_ends_at, merged.notes ?? null, merged.record_results ? 1 : 0, req.params.id]
         );
         store.persist();
         broadcast('session', { session_id: Number(req.params.id) });

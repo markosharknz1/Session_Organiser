@@ -6,9 +6,12 @@ let searchDebounce = null;
 
 function $(sel) { return document.querySelector(sel); }
 
-async function api(path) {
-    const res = await fetch(path);
-    const body = await res.json().catch(() => null);
+async function api(path, options = {}) {
+    const res = await fetch(path, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    });
+    const body = res.status === 204 ? null : await res.json().catch(() => null);
     if (!res.ok) throw new Error(body?.error || `Request failed (${res.status})`);
     return body;
 }
@@ -207,6 +210,7 @@ $('#calendar-next').addEventListener('click', () => {
 // that round's games on its own, with a link back to the list - every
 // round's games stacked on one page was too much to scan.
 let sessionRounds = [];
+let sessionRecordsResults = false; // the opened session's "record results" flag
 
 function localClockTime(dtStr) {
     return new Date(`${dtStr.replace(' ', 'T')}Z`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -222,6 +226,7 @@ async function openSession(sessionId) {
         $('#session-note').style.display = data.session.notes ? '' : 'none';
         mountTonightSummary($('#session-payment-summary'), sessionId);
         sessionRounds = data.rounds;
+        sessionRecordsResults = !!data.session.record_results;
         renderRoundList();
     } catch (err) {
         showError(err.message);
@@ -269,6 +274,23 @@ function renderRoundDetail(idx) {
         </div>
     `;
     $('#back-to-rounds').addEventListener('click', renderRoundList);
+    // Won buttons (a night that recorded results): set, change or clear.
+    container.querySelectorAll('button[data-result-game]').forEach((btn) => btn.addEventListener('click', async () => {
+        const gameId = Number(btn.dataset.resultGame);
+        const side = Number(btn.dataset.side);
+        try {
+            const game = round.games.find((g) => g.id === gameId);
+            if (btn.classList.contains('won')) {
+                await api(`/api/games/${gameId}/result`, { method: 'DELETE' });
+                game.result = null;
+            } else {
+                game.result = await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify({ winner_side: side }) });
+            }
+            renderRoundDetail(idx);
+        } catch (err) {
+            showError(err.message);
+        }
+    }));
     $('#round-detail-prev').addEventListener('click', () => renderRoundDetail(idx - 1));
     $('#round-detail-next').addEventListener('click', () => renderRoundDetail(idx + 1));
     container.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -289,12 +311,16 @@ function renderGameRow(g) {
         </div>
     `;
     }
+    const winner = g.result ? g.result.winner_side : null;
+    const wonBtn = (n) => sessionRecordsResults
+        ? `<button type="button" class="small result-btn ${winner === n ? 'won' : ''}" data-result-game="${g.id}" data-side="${n}">${winner === n ? '&check; Won' : 'Won'}</button>`
+        : '';
     return `
         <div class="history-game">
             <span class="court-tag">Court ${g.court_number}</span>
-            <span class="team">${side(1)}</span>
+            <span class="team ${winner === 1 ? 'won' : ''}">${side(1)}${wonBtn(1)}</span>
             <span class="vs">vs</span>
-            <span class="team">${side(2)}</span>
+            <span class="team ${winner === 2 ? 'won' : ''}">${side(2)}${wonBtn(2)}</span>
             <span class="muted">${esc(g.format)}</span>
         </div>
     `;
@@ -313,10 +339,14 @@ async function openPlayer(playerId) {
         showView('player');
         $('#player-title').textContent = `${data.player.first_name} ${data.player.last_name}`;
         const rangeNote = (from || to) ? ` (${from || 'start'} to ${to || 'now'})` : '';
-        $('#player-subtitle').innerHTML = `Current grade ${skillTag(data.player.skill_level)} - ${data.games.length} game${data.games.length === 1 ? '' : 's'} on record${rangeNote}. Grade shown per row is what they were officially playing at that night.`;
+        const rec = data.record || { wins: 0, losses: 0, unrecorded: 0 };
+        const recordNote = rec.wins + rec.losses > 0
+            ? ` <strong>Won ${rec.wins}, lost ${rec.losses}</strong>${rec.unrecorded ? ` (${rec.unrecorded} without a result)` : ''}.`
+            : '';
+        $('#player-subtitle').innerHTML = `Current grade ${skillTag(data.player.skill_level)} - ${data.games.length} game${data.games.length === 1 ? '' : 's'} on record${rangeNote}.${recordNote} Grade shown per row is what they were officially playing at that night.`;
         const tbody = $('#player-games-table tbody');
         if (data.games.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="muted">No games on record for this range.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="muted">No games on record for this range.</td></tr>';
             return;
         }
         tbody.innerHTML = data.games.map((g) => `
@@ -328,6 +358,7 @@ async function openPlayer(playerId) {
                 <td class="num">${skillTag(g.skill_level_at_time)}</td>
                 <td>${g.partners.map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillTag(p.skill_level_at_time)}`).join(', ') || '<span class="muted">-</span>'}</td>
                 <td>${g.opponents.map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillTag(p.skill_level_at_time)}`).join(', ')}</td>
+                <td class="num">${g.outcome === 'won' ? '<span class="outcome won">W</span>' : g.outcome === 'lost' ? '<span class="outcome lost">L</span>' : '<span class="muted">-</span>'}</td>
             </tr>
         `).join('');
     } catch (err) {

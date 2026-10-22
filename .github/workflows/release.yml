@@ -48,6 +48,7 @@ jobs:
           npm run tally:test
           npm run backup:test
           npm run leaving:test
+          npm run results:test
           node --check launcher.js
 
       - name: Fetch the official Node.js runtime for Windows

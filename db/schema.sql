@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS sessions (
     phase_started_at TEXT,
     phase_ends_at TEXT,
     notes TEXT,
+    -- 1 = results (who won) are being recorded tonight - see game_results.
+    record_results INTEGER NOT NULL DEFAULT 0 CHECK (record_results IN (0,1)),
     paused_remaining_ms INTEGER,
     phase_paused_at TEXT,
     paused_from_phase TEXT CHECK (paused_from_phase IN ('game','break'))
@@ -175,6 +177,16 @@ CREATE TABLE IF NOT EXISTS game_vacancies (
     PRIMARY KEY (game_id, player_id)
 );
 
+-- Who won a game (lib/results.js). One row per game at most; scores are
+-- optional. Nothing reads this for grouping - it is grading evidence.
+CREATE TABLE IF NOT EXISTS game_results (
+    game_id INTEGER PRIMARY KEY REFERENCES games(id),
+    winner_side INTEGER NOT NULL CHECK (winner_side IN (1,2)),
+    side1_score INTEGER,
+    side2_score INTEGER,
+    recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS pairing_rules (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     player_a_id INTEGER NOT NULL REFERENCES players(id),
@@ -234,6 +246,9 @@ CREATE TABLE IF NOT EXISTS club_settings (
     -- club's network too, so the External Display can be opened on another
     -- device (a TV on the wifi). Read once, at server start - see server.js.
     allow_network_access INTEGER NOT NULL DEFAULT 0 CHECK (allow_network_access IN (0,1)),
+    -- Record who won each game (optional - the start panel can turn it on
+    -- or off per night; this is the default for that tick).
+    record_results INTEGER NOT NULL DEFAULT 0 CHECK (record_results IN (0,1)),
     -- Access PIN other devices must enter (lib/access.js): a salted scrypt
     -- hash of the PIN, and a random per-install secret the devices' sign-in
     -- cookies are derived from. Never returned by the API.

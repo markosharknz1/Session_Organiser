@@ -9,6 +9,7 @@ let allPlayers = []; // full roster, refreshed on load and on 'players' events
 let sessionPaymentRates = []; // this session's category prices [{payment_category_id, name, amount_cents}]
 let paymentModalContext = null; // { attendanceId } while the payment modal is open
 let paymentTrackingEnabled = false; // club_settings.square_enabled - gates the whole payment feature
+let recordResultsDefault = false; // club_settings.record_results - the default for the start panel's tick
 let checkinModalPlayerId = null; // player id the check-in modal is currently open for
 let checkinModalAttendanceId = null; // set when converting an existing 'booked' row to arrived (vs. a brand-new check-in)
 
@@ -99,6 +100,7 @@ async function init() {
         applyBranding(club);
         setDateFormat(club.date_format);
         paymentTrackingEnabled = !!club.square_enabled;
+        recordResultsDefault = !!club.record_results;
     } catch (err) {
         // Club settings should always exist (seeded row id=1); non-fatal if it fails.
     }
@@ -156,10 +158,7 @@ function renderTemplateChoice(template, date) {
     body.innerHTML = `
         <p><strong>${template.label}</strong> - ${template.start_time} to ${template.end_time}
         (${template.courts.length} court${template.courts.length === 1 ? '' : 's'}, ${template.default_format || 'doubles'}, mode: ${template.default_mode}${template.default_max_capacity ? `, guideline: ${template.default_max_capacity} players` : ''})</p>
-        <div class="field">
-            <label for="start-note">Anything to note about today? (optional)</label>
-            <input type="text" id="start-note" maxlength="300" placeholder="e.g. Club Champs, public holiday, school holidays, heatwave - explains unusual numbers later">
-        </div>
+        ${startExtrasHtml()}
         <div class="template-choice">
             <button class="primary" id="same-as-usual">Same as usual</button>
             <button id="need-to-change">Need to change something</button>
@@ -170,7 +169,7 @@ function renderTemplateChoice(template, date) {
         try {
             openSession = await api('/api/sessions/start', {
                 method: 'POST',
-                body: JSON.stringify({ template_id: template.id, date, notes: startNote() }),
+                body: JSON.stringify({ template_id: template.id, date, notes: startNote(), record_results: startRecordResults() }),
             });
             await enterCheckinMode();
         } catch (err) {
@@ -232,6 +231,7 @@ async function renderChangeForm(template, date) {
                     template_id: template.id,
                     date,
                     notes: startNote(),
+                    record_results: startRecordResults(),
                     overrides: {
                         mode: $('#cf-mode').value,
                         format: $('#cf-format').value,
@@ -269,10 +269,7 @@ async function renderAdhocForm(date) {
                 ${activeCourts.map((c) => `<label><input type="checkbox" value="${c.id}" checked> Court ${c.court_number}</label>`).join('')}
             </div>
         </div>
-        <div class="field">
-            <label for="start-note">Anything to note about today? (optional)</label>
-            <input type="text" id="start-note" maxlength="300" placeholder="e.g. Club Champs, public holiday, school holidays, heatwave - explains unusual numbers later">
-        </div>
+        ${startExtrasHtml()}
         <button class="primary" id="ah-submit">Start session</button>
     `;
     $('#ah-submit').onclick = async () => {
@@ -287,6 +284,7 @@ async function renderAdhocForm(date) {
                     format: $('#ah-format').value,
                     court_ids,
                     notes: startNote(),
+                    record_results: startRecordResults(),
                 }),
             });
             await enterCheckinMode();
@@ -297,10 +295,28 @@ async function renderAdhocForm(date) {
 }
 
 // The "anything to note about today?" box on the start panel - becomes the
-// session's notes (editable later with the Notes button).
+// session's notes (editable later with the Notes button) - and the
+// "record game results tonight" tick (default from Settings > Game defaults).
+function startExtrasHtml() {
+    return `
+        <div class="field">
+            <label for="start-note">Anything to note about today? (optional)</label>
+            <input type="text" id="start-note" maxlength="300" placeholder="e.g. Club Champs, public holiday, school holidays, heatwave - explains unusual numbers later">
+        </div>
+        <div class="field checkbox-row">
+            <input type="checkbox" id="start-results" ${recordResultsDefault ? 'checked' : ''}>
+            <label for="start-results">Record game results tonight (a <em>Won</em> button under each side on the Rounds page)</label>
+        </div>`;
+}
+
 function startNote() {
     const el = $('#start-note');
     return el ? el.value.trim() || null : null;
+}
+
+function startRecordResults() {
+    const el = $('#start-results');
+    return el ? el.checked : recordResultsDefault;
 }
 
 // --- Check-in mode ---

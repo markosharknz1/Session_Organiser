@@ -1,5 +1,6 @@
 const express = require('express');
 const store = require('../db/store');
+const { resultFor, playerRecord } = require('../lib/results');
 
 const router = express.Router();
 
@@ -39,6 +40,7 @@ router.get('/sessions/:id', (req, res) => {
     );
     const gamesWithPlayers = games.map((g) => ({
         ...g,
+        result: resultFor(g.id),
         players: store.query(
             `SELECT gp.player_id, gp.side, gp.skill_level_at_time, p.first_name, p.last_name
              FROM game_players gp JOIN players p ON p.id = gp.player_id
@@ -96,11 +98,13 @@ router.get('/players/:id', (req, res) => {
     const games = store.query(
         `SELECT g.id AS game_id, g.round_number, g.format, g.status, g.mode,
                 s.id AS session_id, s.date, s.label, c.court_number,
-                gp.side, gp.skill_level_at_time
+                gp.side, gp.skill_level_at_time,
+                r.winner_side, r.side1_score, r.side2_score
          FROM game_players gp
          JOIN games g ON g.id = gp.game_id
          JOIN sessions s ON s.id = g.session_id
          JOIN courts c ON c.id = g.court_id
+         LEFT JOIN game_results r ON r.game_id = g.id
          WHERE gp.player_id = ? AND g.status IN ('active','completed')${dateFilter}
          ORDER BY s.date DESC, g.round_number DESC`,
         params
@@ -120,12 +124,14 @@ router.get('/players/:id', (req, res) => {
         const unsided = g.format === 'threes';
         return {
             ...g,
+            // 'won' / 'lost' once a result is recorded (sided formats only)
+            outcome: g.winner_side ? (g.winner_side === g.side ? 'won' : 'lost') : null,
             partners: unsided ? [] : others.filter((o) => o.side === g.side),
             opponents: unsided ? others : others.filter((o) => o.side !== g.side),
         };
     });
 
-    res.json({ player, games: detailed });
+    res.json({ player, games: detailed, record: playerRecord(req.params.id, { from, to }) });
 });
 
 module.exports = router;
