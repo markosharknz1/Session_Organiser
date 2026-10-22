@@ -764,12 +764,15 @@ nav.app-nav a.active {
 .history-game .team.won { font-weight: 700; }
 .history-game .team .result-btn { margin: 0 0 0 8px; }
 /* Scores beside the Won buttons: two small boxes, the winner follows. */
-.score-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 0.85rem; }
+.score-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.score-row { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.score-row.spare { opacity: 0.75; }
+.score-row .score-label:first-child { min-width: 1.8em; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; }
 .score-row .score-label { color: var(--muted); }
 input[type="number"].score-in { width: 3.6em; padding: 3px 4px; text-align: center; font-size: 0.85rem; -moz-appearance: textfield; }
 input.score-in::-webkit-outer-spin-button, input.score-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 input.score-in.invalid { border-color: var(--danger); background: #fef2f2; }
-.history-game .score-row { margin: 0 8px 0 0; }
+.history-game .score-rows { margin: 0 8px 0 0; }
 .score-text { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .outcome { display: inline-block; min-width: 1.4em; text-align: center; font-weight: 700; border-radius: 4px; padding: 0 4px; }

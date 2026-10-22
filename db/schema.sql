@@ -182,9 +182,19 @@ CREATE TABLE IF NOT EXISTS game_vacancies (
 CREATE TABLE IF NOT EXISTS game_results (
     game_id INTEGER PRIMARY KEY REFERENCES games(id),
     winner_side INTEGER NOT NULL CHECK (winner_side IN (1,2)),
-    side1_score INTEGER,
+    side1_score INTEGER, -- no longer written: scores live in game_scores
     side2_score INTEGER,
     recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- The games inside a court's timed match, each with its score ("21-18,
+-- 19-21, 21-15"). Any number per match; the winner follows from them.
+CREATE TABLE IF NOT EXISTS game_scores (
+    game_id INTEGER NOT NULL REFERENCES games(id),
+    game_no INTEGER NOT NULL CHECK (game_no BETWEEN 1 AND 20),
+    side1_score INTEGER NOT NULL CHECK (side1_score >= 0),
+    side2_score INTEGER NOT NULL CHECK (side2_score >= 0),
+    PRIMARY KEY (game_id, game_no)
 );
 
 CREATE TABLE IF NOT EXISTS pairing_rules (

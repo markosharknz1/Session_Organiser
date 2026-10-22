@@ -609,7 +609,8 @@ $('#active-games-grid').addEventListener('click', async (e) => {
         if (btn.classList.contains('won')) {
             await api(`/api/games/${gameId}/result`, { method: 'DELETE' });
         } else {
-            await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify({ winner_side: side }) });
+            // typed scores come along; if they say the other side won, the server says so
+            await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify({ winner_side: side, scores: scoresFromBoxes($('#active-games-grid'), gameId) }) });
         }
         showError('');
         await renderRoundGamesPanel();

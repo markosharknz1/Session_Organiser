@@ -299,7 +299,7 @@ function renderRoundDetail(idx) {
                 await api(`/api/games/${gameId}/result`, { method: 'DELETE' });
                 game.result = null;
             } else {
-                game.result = await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify({ winner_side: side }) });
+                game.result = await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify({ winner_side: side, scores: scoresFromBoxes(container, gameId) }) });
             }
             renderRoundDetail(idx);
         } catch (err) {
@@ -333,8 +333,8 @@ function renderGameRow(g) {
     // Scores: inputs on a night that records results, plain text otherwise.
     const scores = sessionRecordsResults
         ? scoreRowHtml(g)
-        : (g.result && g.result.side1_score !== null && g.result.side2_score !== null
-            ? `<span class="score-text">${g.result.side1_score} - ${g.result.side2_score}</span>` : '');
+        : (g.result && g.result.scores && g.result.scores.length
+            ? `<span class="score-text">${scoresText(g.result)}</span>` : '');
     return `
         <div class="history-game">
             <span class="court-tag">Court ${g.court_number}</span>
@@ -349,10 +349,8 @@ function renderGameRow(g) {
 
 // "21-18" with this player's own side first, when scores were recorded.
 function playerScoreText(g) {
-    if (g.side1_score === null || g.side1_score === undefined || g.side2_score === null || g.side2_score === undefined) return '';
-    const mine = g.side === 1 ? g.side1_score : g.side2_score;
-    const theirs = g.side === 1 ? g.side2_score : g.side1_score;
-    return ` <span class="score-text">${mine}-${theirs}</span>`;
+    if (!g.scores || !g.scores.length) return '';
+    return ` <span class="score-text">${scoresText({ scores: g.scores }, g.side)}</span>`;
 }
 
 // --- One player's history ---

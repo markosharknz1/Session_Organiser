@@ -99,7 +99,7 @@ router.get('/players/:id', (req, res) => {
         `SELECT g.id AS game_id, g.round_number, g.format, g.status, g.mode,
                 s.id AS session_id, s.date, s.label, c.court_number,
                 gp.side, gp.skill_level_at_time,
-                r.winner_side, r.side1_score, r.side2_score
+                r.winner_side
          FROM game_players gp
          JOIN games g ON g.id = gp.game_id
          JOIN sessions s ON s.id = g.session_id
@@ -126,6 +126,7 @@ router.get('/players/:id', (req, res) => {
             ...g,
             // 'won' / 'lost' once a result is recorded (sided formats only)
             outcome: g.winner_side ? (g.winner_side === g.side ? 'won' : 'lost') : null,
+            scores: g.winner_side ? (resultFor(g.game_id) || {}).scores || [] : [],
             partners: unsided ? [] : others.filter((o) => o.side === g.side),
             opponents: unsided ? others : others.filter((o) => o.side !== g.side),
         };
