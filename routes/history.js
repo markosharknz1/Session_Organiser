@@ -1,6 +1,7 @@
 const express = require('express');
 const store = require('../db/store');
 const { resultFor, playerRecord } = require('../lib/results');
+const { committeeReport, committeeCsv } = require('../lib/committeeReport');
 
 const router = express.Router();
 
@@ -21,6 +22,22 @@ router.get('/sessions', (req, res) => {
          ORDER BY s.date DESC, s.id DESC`
     );
     res.json(sessions);
+});
+
+// The committee report over a date range (lib/committeeReport.js): JSON
+// for the History page, and the same as a CSV download.
+router.get('/committee', (req, res) => {
+    const { from, to } = req.query;
+    res.json(committeeReport(store.getDb(), from || null, to || null));
+});
+
+router.get('/committee.csv', (req, res) => {
+    const { from, to } = req.query;
+    const report = committeeReport(store.getDb(), from || null, to || null);
+    const name = `committee-report-${report.from || 'start'}-to-${report.to || 'now'}.csv`;
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="${name}"`);
+    res.send(`\ufeff${committeeCsv(report)}`);
 });
 
 // Full round-by-round breakdown of one session.

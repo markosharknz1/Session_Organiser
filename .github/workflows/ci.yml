@@ -25,6 +25,7 @@ jobs:
       - run: npm run backup:test
       - run: npm run leaving:test
       - run: npm run results:test
+      - run: npm run committee:test
       - name: Launcher and server load
         run: |
           node --check launcher.js

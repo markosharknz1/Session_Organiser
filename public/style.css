@@ -1039,6 +1039,11 @@ textarea {
     padding-bottom: 4px;
 }
 
+/* Committee report: two side-by-side tables above the player list. */
+.committee-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 14px; }
+.committee-grid h3 { margin: 0 0 6px; font-size: 0.95rem; }
+#committee-players tr[data-player-id] { cursor: pointer; }
+
 .history-game {
     display: flex;
     align-items: center;

@@ -20,7 +20,8 @@
     "tally:test": "node lib/tallyReport.test.js",
     "backup:test": "node lib/backupRestore.test.js",
     "leaving:test": "node lib/leaving.test.js",
-    "results:test": "node lib/results.test.js"
+    "results:test": "node lib/results.test.js",
+    "committee:test": "node lib/committeeReport.test.js"
   },
   "dependencies": {
     "exceljs": "4.4.0",

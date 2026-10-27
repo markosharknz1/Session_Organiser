@@ -90,6 +90,18 @@
             </div>
         </div>
 
+        <div class="panel" id="committee-panel">
+            <h2>Committee report</h2>
+            <p class="muted">For a date range: sessions held, who came, how many were new, whether the new people came back, and how many sessions and matches each player played. Counts only - no dates per player. Download it as a CSV for the committee pack.</p>
+            <div class="filter-bar">
+                <div class="field"><label for="committee-from">From</label><input type="date" id="committee-from"></div>
+                <div class="field"><label for="committee-to">To</label><input type="date" id="committee-to"></div>
+                <div class="field"><label>&nbsp;</label><button class="primary" id="committee-run">Run report</button></div>
+                <div class="field"><label>&nbsp;</label><button id="committee-csv" disabled>Download CSV</button></div>
+            </div>
+            <div id="committee-output"></div>
+        </div>
+
         <div class="panel">
             <h2>All sessions</h2>
             <table class="history-table" id="sessions-table">

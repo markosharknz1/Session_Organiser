@@ -205,6 +205,99 @@ $('#calendar-next').addEventListener('click', () => {
     renderCalendar();
 });
 
+// --- Committee report ---
+// Quick presets fill the dates; the report itself is lib/committeeReport.js.
+function committeeRange() {
+    return { from: $('#committee-from').value, to: $('#committee-to').value };
+}
+
+function committeeQuery() {
+    const { from, to } = committeeRange();
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    return params.toString() ? `?${params.toString()}` : '';
+}
+
+async function runCommitteeReport() {
+    const out = $('#committee-output');
+    out.innerHTML = '<p class="muted">Working...</p>';
+    try {
+        const r = await api(`/api/history/committee${committeeQuery()}`);
+        renderCommitteeReport(r);
+        $('#committee-csv').disabled = false;
+    } catch (err) {
+        out.innerHTML = '';
+        showError(err.message);
+    }
+}
+
+function renderCommitteeReport(r) {
+    const rangeText = `${r.from ? formatDate(r.from) : 'the start'} to ${r.to ? formatDate(r.to) : 'now'}`;
+    const pct = (n, of) => (of ? `${Math.round((n / of) * 100)}%` : '-');
+    const memb = r.by_membership;
+    $('#committee-output').innerHTML = `
+        <p class="muted" style="margin:12px 0 6px;">${esc(rangeText)}</p>
+        <div class="trend-summary">
+            <div><strong>${r.sessions_held}</strong><span class="muted">sessions held</span></div>
+            <div><strong>${r.unique_players}</strong><span class="muted">different players</span></div>
+            <div><strong>${r.attendances}</strong><span class="muted">attendances</span></div>
+            <div><strong>${r.average_per_session}</strong><span class="muted">average per session</span></div>
+            <div><strong>${r.new_players}</strong><span class="muted">new players</span></div>
+            <div><strong>${r.retention_rate === null ? '-' : `${r.retention_rate}%`}</strong><span class="muted">of new players came back</span></div>
+        </div>
+        <div class="committee-grid">
+            <div>
+                <h3>Who came</h3>
+                <table class="history-table">
+                    <tbody>
+                        <tr><td>Active members</td><td class="num">${memb.active || 0}</td></tr>
+                        <tr><td>Lapsed members</td><td class="num">${memb.lapsed || 0}</td></tr>
+                        <tr><td>Guests</td><td class="num">${memb.guest || 0}</td></tr>
+                    </tbody>
+                </table>
+                <p class="muted" style="margin:6px 0 0;">Membership as it is now, not as it was at the time.</p>
+            </div>
+            <div>
+                <h3>New players - how many sessions they went on to attend</h3>
+                <table class="history-table">
+                    <tbody>
+                        ${r.retention.map((b) => `<tr><td>${esc(b.label)}</td><td class="num">${b.players}</td><td class="num muted">${pct(b.players, r.new_players)}</td></tr>`).join('')}
+                        <tr><td><strong>Came back at least once</strong></td><td class="num"><strong>${r.returned_after_first}</strong></td><td class="num muted">${pct(r.returned_after_first, r.new_players)}</td></tr>
+                    </tbody>
+                </table>
+                <p class="muted" style="margin:6px 0 0;">"New" = their first ever session was in this range. Sessions counted up to the end of the range.</p>
+            </div>
+        </div>
+        <h3 style="margin-top:16px;">Players (${r.players.length})</h3>
+        <div class="roster-table-wrap">
+            <table class="history-table" id="committee-players">
+                <thead><tr><th>Player</th><th class="num">Grade</th><th>Membership</th><th>New</th><th class="num">Sessions</th><th class="num">Matches</th><th class="num">Won</th><th class="num">Lost</th></tr></thead>
+                <tbody>
+                    ${r.players.map((p) => `
+                        <tr data-player-id="${p.id}">
+                            <td>${esc(p.first_name)} ${esc(p.last_name)}</td>
+                            <td class="num">${skillTag(p.skill_level)}</td>
+                            <td class="muted">${esc(p.membership_status)}</td>
+                            <td>${p.is_new ? '<span class="first-time-badge">New</span>' : ''}</td>
+                            <td class="num">${p.sessions}</td>
+                            <td class="num">${p.matches}</td>
+                            <td class="num">${p.wins || '-'}</td>
+                            <td class="num">${p.losses || '-'}</td>
+                        </tr>`).join('') || '<tr><td colspan="8" class="muted">No one attended in this range.</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+    `;
+    $('#committee-players').querySelectorAll('tr[data-player-id]').forEach((tr) => {
+        tr.addEventListener('click', () => openPlayer(Number(tr.dataset.playerId)));
+    });
+}
+
+$('#committee-run').addEventListener('click', runCommitteeReport);
+$('#committee-csv').addEventListener('click', () => { window.location.href = `/api/history/committee.csv${committeeQuery()}`; });
+['#committee-from', '#committee-to'].forEach((sel) => $(sel).addEventListener('change', () => { $('#committee-csv').disabled = true; }));
+
 // --- One session's rounds ---
 // One row per round (number, start time, courts); clicking a row opens
 // that round's games on its own, with a link back to the list - every
