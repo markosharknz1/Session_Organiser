@@ -30,8 +30,9 @@ router.post('/sessions/:id/rounds/resume', handle(lifecycle.resumeCurrentPhase))
 router.get('/sessions/:id/auto-generate/preview', (req, res) => {
     const sessionId = Number(req.params.id);
     const roundNumber = req.query.round_number ? Number(req.query.round_number) : lifecycle.getNextRoundNumber(sessionId);
+    const seed = req.query.seed !== undefined && req.query.seed !== '' ? Number(req.query.seed) : undefined;
     try {
-        const plan = generateRound(store.getDb(), sessionId, roundNumber);
+        const plan = generateRound(store.getDb(), sessionId, roundNumber, Number.isInteger(seed) ? { seed } : {});
         res.json({ round_number: roundNumber, games: plan });
     } catch (err) {
         res.status(400).json({ error: err.message });
