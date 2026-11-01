@@ -220,6 +220,13 @@ function ensureColumns(db) {
         db.run(`ALTER TABLE sessions ADD COLUMN format TEXT NOT NULL DEFAULT 'doubles' CHECK (format IN ('doubles','singles','threes'))`);
     }
 
+    if (!sessionColsNow.includes('scoring')) {
+        // The scoring preset (public/scoring.js) - games to 21, sets, ...
+        db.run(`ALTER TABLE sessions ADD COLUMN scoring TEXT NOT NULL DEFAULT 'badminton'`);
+    }
+    if (!templateColsNow.includes('default_scoring')) {
+        db.run(`ALTER TABLE session_templates ADD COLUMN default_scoring TEXT NOT NULL DEFAULT 'badminton'`);
+    }
     if (!sessionColsNow.includes('record_results')) {
         // Results (who won) recorded tonight? Off unless ticked at the start.
         db.run(`ALTER TABLE sessions ADD COLUMN record_results INTEGER NOT NULL DEFAULT 0 CHECK (record_results IN (0,1))`);
@@ -449,6 +456,34 @@ function ensureAttendanceWasBooked(db) {
     if (!cols.includes('rest_round')) db.run(`ALTER TABLE attendance ADD COLUMN rest_round INTEGER`);
 }
 
+// Results for threes (three in a box): game_results.winner_side becomes
+// optional (the winner of a box is a player, winner_player_id) and
+// game_scores learns which two players each game was between. A
+// game_results table from v1.0.20 has winner_side NOT NULL, so it is
+// rebuilt once; the two new columns are plain additions.
+function ensureThreesResults(db) {
+    const row = get(db, `SELECT sql FROM sqlite_master WHERE type='table' AND name='game_results'`);
+    if (row && /winner_side INTEGER NOT NULL/.test(row.sql)) {
+        const relaxed = row.sql.replace(/winner_side INTEGER NOT NULL/, 'winner_side INTEGER');
+        const createNew = relaxed.replace(/^CREATE TABLE\s+(?:IF NOT EXISTS\s+)?["`\[]?\w+["`\]]?/i, 'CREATE TABLE game_results_new');
+        const before = get(db, 'SELECT COUNT(*) AS n FROM game_results').n;
+        db.run(createNew);
+        db.run('INSERT INTO game_results_new SELECT * FROM game_results');
+        const after = get(db, 'SELECT COUNT(*) AS n FROM game_results_new').n;
+        if (after !== before) {
+            db.run('DROP TABLE game_results_new');
+            throw new Error(`ensureThreesResults: copy kept ${after} of ${before} rows - left unchanged`);
+        }
+        db.run('DROP TABLE game_results');
+        db.run('ALTER TABLE game_results_new RENAME TO game_results');
+    }
+    const resultCols = all(db, `PRAGMA table_info(game_results)`).map((c) => c.name);
+    if (!resultCols.includes('winner_player_id')) db.run('ALTER TABLE game_results ADD COLUMN winner_player_id INTEGER REFERENCES players(id)');
+    const scoreCols = all(db, `PRAGMA table_info(game_scores)`).map((c) => c.name);
+    if (!scoreCols.includes('player1_id')) db.run('ALTER TABLE game_scores ADD COLUMN player1_id INTEGER REFERENCES players(id)');
+    if (!scoreCols.includes('player2_id')) db.run('ALTER TABLE game_scores ADD COLUMN player2_id INTEGER REFERENCES players(id)');
+}
+
 // Names saved with spaces around them (an older quick-add, a hand-edited
 // import) sort to the wrong place. Trim them once; the players routes now
 // trim on save, so this stays a no-op afterwards.
@@ -629,6 +664,6 @@ function get(db, sql, params = []) {
 module.exports = {
     PUBLIC_DIR, CLUB_ASSETS, CLUB_ICON_ICO, openDbFromBuffer, readBackupManifest,
     DB_PATH, SCHEMA_PATH, BACKUP_DIR, openDb, applySchema, saveDb, all, get,
-    ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, ensureAttendanceWasBooked, trimPlayerNames, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, listBackups,
+    ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, ensureAttendanceWasBooked, ensureThreesResults, trimPlayerNames, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, listBackups,
     todayLocalDateStr,
 };

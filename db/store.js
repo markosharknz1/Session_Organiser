@@ -2,7 +2,7 @@
 // Every mutating call persists to disk immediately (persist()) - this is a
 // single-writer local app, not a high-throughput server, so simplicity and
 // durability win over batching writes.
-const { openDb, applySchema, saveDb, ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, ensureAttendanceWasBooked, trimPlayerNames, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, openDbFromBuffer, all, get } = require('./index');
+const { openDb, applySchema, saveDb, ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, ensureAttendanceWasBooked, ensureThreesResults, trimPlayerNames, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, openDbFromBuffer, all, get } = require('./index');
 
 let db = null;
 
@@ -18,6 +18,7 @@ function migrate(db) {
     ensureSessionsPausedPhase(db); // table-rebuild migration: allows sessions.current_phase = 'paused' (must run after ensureColumns)
     ensureThreesFormat(db); // table-rebuild migration: allows format = 'threes' on templates, sessions and games (must run after the two above)
     ensureAttendanceWasBooked(db); // attendance.was_booked - pre-booked vs turned up on the day (must run after the attendance rebuild above)
+    ensureThreesResults(db); // results for threes: winner is a player, scores are between two players
     trimPlayerNames(db); // names stored with spaces around them sort to the wrong place
     markLegacyAdhocCategoriesSystem(db); // hide the old Cash/Card/Voucher categories from Settings, keep history intact
     backfillSportsVoucherMethod(db); // any Sports Voucher payment saved before this was tracked

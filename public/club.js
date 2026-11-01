@@ -734,6 +734,11 @@ function templateEditHtml(t, idx) {
                     </select>
                 </div>
                 <div class="field">
+                    <label>Scoring</label>
+                    <select data-field="default_scoring">${scoringOptionsHtml(t.default_scoring)}</select>
+                    <p class="muted" style="font-size:0.78rem; margin: 4px 0 0;">Only matters when game results are recorded: names the score rows (game or set) and fills in the winner's score when just the loser's is typed.</p>
+                </div>
+                <div class="field">
                     <label>Rotation guideline (optional)</label>
                     <input type="number" min="0" data-field="default_max_capacity" value="${t.default_max_capacity ?? ''}" placeholder="No guideline">
                     <p class="muted" style="font-size:0.78rem; margin: 4px 0 0;">${ROTATION_GUIDELINE_HELP}</p>
@@ -843,6 +848,7 @@ function readTemplateCard(idx) {
         end_time: value('end_time'),
         default_mode: value('default_mode'),
         default_format: value('default_format'),
+        default_scoring: value('default_scoring'),
         default_max_capacity: capacity === '' ? null : Number(capacity),
         default_game_minutes: gameMinutes === '' ? null : Number(gameMinutes),
         default_break_minutes: breakMinutes === '' ? null : Number(breakMinutes),

@@ -1,6 +1,6 @@
 const express = require('express');
 const store = require('../db/store');
-const { resultFor, playerRecord } = require('../lib/results');
+const { resultFor, playerRecord, outcomeFor } = require('../lib/results');
 const { committeeReport, committeeCsv } = require('../lib/committeeReport');
 
 const router = express.Router();
@@ -142,8 +142,8 @@ router.get('/players/:id', (req, res) => {
         return {
             ...g,
             // 'won' / 'lost' once a result is recorded (sided formats only)
-            outcome: g.winner_side ? (g.winner_side === g.side ? 'won' : 'lost') : null,
-            scores: g.winner_side ? (resultFor(g.game_id) || {}).scores || [] : [],
+            outcome: outcomeFor(resultFor(g.game_id), g.side, Number(req.params.id)),
+            scores: (resultFor(g.game_id) || {}).scores || [],
             partners: unsided ? [] : others.filter((o) => o.side === g.side),
             opponents: unsided ? others : others.filter((o) => o.side !== g.side),
         };

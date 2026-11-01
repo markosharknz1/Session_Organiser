@@ -53,6 +53,9 @@ CREATE TABLE IF NOT EXISTS session_templates (
     -- doubles (4 a court), singles (2 a court) or threes (3 on a court with
     -- no sides - e.g. squash, three in the box taking turns)
     default_format TEXT NOT NULL DEFAULT 'doubles' CHECK (default_format IN ('doubles','singles','threes')),
+    -- How the sport scores (public/scoring.js presets): names the score
+    -- rows (game / set) and the score a game is played to.
+    default_scoring TEXT NOT NULL DEFAULT 'badminton',
     default_max_capacity INTEGER,
     -- Null falls back to club_settings.default_game_minutes/default_break_minutes.
     default_game_minutes INTEGER,
@@ -86,6 +89,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     status TEXT NOT NULL CHECK (status IN ('open','closed')) DEFAULT 'open',
     mode TEXT NOT NULL CHECK (mode IN ('auto','manual','social')),
     format TEXT NOT NULL DEFAULT 'doubles' CHECK (format IN ('doubles','singles','threes')),
+    scoring TEXT NOT NULL DEFAULT 'badminton',
     game_minutes INTEGER,
     break_minutes INTEGER,
     max_capacity INTEGER,
@@ -181,7 +185,8 @@ CREATE TABLE IF NOT EXISTS game_vacancies (
 -- optional. Nothing reads this for grouping - it is grading evidence.
 CREATE TABLE IF NOT EXISTS game_results (
     game_id INTEGER PRIMARY KEY REFERENCES games(id),
-    winner_side INTEGER NOT NULL CHECK (winner_side IN (1,2)),
+    winner_side INTEGER CHECK (winner_side IN (1,2)),  -- doubles / singles
+    winner_player_id INTEGER REFERENCES players(id),    -- threes: who won the box
     side1_score INTEGER, -- no longer written: scores live in game_scores
     side2_score INTEGER,
     recorded_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -192,6 +197,10 @@ CREATE TABLE IF NOT EXISTS game_results (
 CREATE TABLE IF NOT EXISTS game_scores (
     game_id INTEGER NOT NULL REFERENCES games(id),
     game_no INTEGER NOT NULL CHECK (game_no BETWEEN 1 AND 20),
+    -- threes only: the two players this game was between (side1_score is
+    -- player1's). NULL for doubles / singles, where the sides are the score.
+    player1_id INTEGER REFERENCES players(id),
+    player2_id INTEGER REFERENCES players(id),
     side1_score INTEGER NOT NULL CHECK (side1_score >= 0),
     side2_score INTEGER NOT NULL CHECK (side2_score >= 0),
     PRIMARY KEY (game_id, game_no)

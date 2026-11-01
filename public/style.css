@@ -767,6 +767,9 @@ nav.app-nav a.active {
 .score-rows { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
 .score-row { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; }
 .score-row.spare { opacity: 0.75; }
+.score-row .score-label.pair { min-width: 7.5em; font-weight: 600; font-size: 0.78rem; letter-spacing: 0; text-transform: none; }
+.active-game-player.won { font-weight: 700; }
+.history-game .team .won { font-weight: 700; }
 .score-row .score-label:first-child { min-width: 1.8em; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; }
 .score-row .score-label { color: var(--muted); }
 input[type="number"].score-in { width: 3.6em; padding: 3px 4px; text-align: center; font-size: 0.85rem; -moz-appearance: textfield; }

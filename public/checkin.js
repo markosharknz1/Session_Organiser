@@ -204,6 +204,10 @@ async function renderChangeForm(template, date) {
                 </select>
             </div>
             <div class="field">
+                <label>Scoring</label>
+                <select id="cf-scoring">${scoringOptionsHtml(template.default_scoring)}</select>
+            </div>
+            <div class="field">
                 <label>Comfortable rotation guideline (optional)</label>
                 <input type="number" id="cf-capacity" value="${template.default_max_capacity ?? ''}" min="0">
             </div>
@@ -235,6 +239,7 @@ async function renderChangeForm(template, date) {
                     overrides: {
                         mode: $('#cf-mode').value,
                         format: $('#cf-format').value,
+                        scoring: $('#cf-scoring').value,
                         max_capacity: capacityVal === '' ? null : Number(capacityVal),
                         court_ids,
                     },
@@ -262,6 +267,10 @@ async function renderAdhocForm(date) {
                 <label>Format</label>
                 <select id="ah-format"><option value="doubles">Doubles (4 a court)</option><option value="singles">Singles (2 a court, e.g. squash)</option><option value="threes">Threes (3 a court, no sides - e.g. squash)</option></select>
             </div>
+            <div class="field">
+                <label>Scoring</label>
+                <select id="ah-scoring">${scoringOptionsHtml()}</select>
+            </div>
         </div>
         <div class="field">
             <label>Courts in use</label>
@@ -282,6 +291,7 @@ async function renderAdhocForm(date) {
                     label: $('#ah-label').value,
                     mode: $('#ah-mode').value,
                     format: $('#ah-format').value,
+                    scoring: $('#ah-scoring').value,
                     court_ids,
                     notes: startNote(),
                     record_results: startRecordResults(),

@@ -542,17 +542,24 @@ async function renderRoundGamesPanel() {
     $('#active-round-minus').disabled = viewedRound <= 1;
     $('#active-round-plus').disabled = viewedRound >= defaultViewedRound();
     // Results (who won): a Won button under each side once the game is on
-    // court or played, when tonight is recording them. Threes has no sides.
+    // court or played, when tonight is recording them. Threes has no sides,
+    // so each player gets a Won button (the box winner) instead.
     const resultsOn = !!(openSession && openSession.record_results) && status !== 'staged';
-    const canRecord = (g) => resultsOn && g.format !== 'threes';
+    const canRecord = (g) => resultsOn;
+    const scoring = scoringFor(openSession && openSession.scoring);
     const wonBtn = (g, sideNum) => {
-        if (!canRecord(g)) return '';
+        if (!canRecord(g) || g.format === 'threes') return '';
         const won = g.result && g.result.winner_side === sideNum;
         return `<button type="button" class="small result-btn ${won ? 'won' : ''}" data-result-game="${g.id}" data-side="${sideNum}" title="${won ? 'Click again to clear this result' : 'This side won'}">${won ? '&check; Won' : 'Won'}</button>`;
     };
+    const playerWonBtn = (g, p) => {
+        if (!canRecord(g) || g.format !== 'threes') return '';
+        const won = g.result && g.result.winner_player_id === p.player_id;
+        return ` <button type="button" class="small result-btn ${won ? 'won' : ''}" data-result-game="${g.id}" data-winner-player="${p.player_id}" title="${won ? 'Click again to clear this result' : 'Won the box (most games)'}">${won ? '&check; Won' : 'Won'}</button>`;
+    };
     const sideLines = (g, sideNum) => g.players
         .filter((p) => p.side === sideNum)
-        .map((p) => `<div class="active-game-player" data-player-id="${p.player_id}">${p.first_name} ${p.last_name}${skillBadge(p.skill_level_at_time)}${gamesCount(p.games_played)}${leavingBadge(attendanceFor(p.player_id))}</div>`)
+        .map((p) => `<div class="active-game-player ${g.result && g.result.winner_player_id === p.player_id ? 'won' : ''}" data-player-id="${p.player_id}">${p.first_name} ${p.last_name}${skillBadge(p.skill_level_at_time)}${gamesCount(p.games_played)}${leavingBadge(attendanceFor(p.player_id))}${playerWonBtn(g, p)}</div>`)
         .join('')
         // a staged court someone has left: their place, boxed in red
         + (g.vacated || []).filter((v) => v.side === sideNum)
@@ -563,7 +570,7 @@ async function renderRoundGamesPanel() {
             <h4>Court ${courtNumberFor(g.court_id)} <span class="muted">(${g.format})</span></h4>
             <div class="active-game-side ${g.result && g.result.winner_side === 1 ? 'won' : ''}">${sideLines(g, 1)}${wonBtn(g, 1)}</div>
             ${g.format === 'threes' ? '' : `<div class="active-game-side ${g.result && g.result.winner_side === 2 ? 'won' : ''}">${sideLines(g, 2)}${wonBtn(g, 2)}</div>`}
-            ${canRecord(g) ? scoreRowHtml(g) : ''}
+            ${canRecord(g) ? scoreRowHtml(g, scoring) : ''}
         </div>
     `).join('') || `<p class="muted">${status === 'staged' ? 'Nothing staged for next round yet.' : 'No games recorded for this round.'}</p>`;
 
@@ -586,7 +593,10 @@ $('#active-games-grid').addEventListener('change', async (e) => {
     const input = e.target.closest('input[data-score-game]');
     if (!input) return;
     const gameId = Number(input.dataset.scoreGame);
-    const body = scoreBodyFor($('#active-games-grid'), gameId);
+    autoFillPartner(input, $('#active-games-grid'), scoringFor(openSession && openSession.scoring));
+    const card = input.closest('.active-game-card');
+    const playerIds = [...card.querySelectorAll('.active-game-player[data-player-id]')].map((el) => Number(el.dataset.playerId));
+    const body = scoreBodyFor($('#active-games-grid'), gameId, playerIds);
     if (!body) return;
     try {
         await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify(body) });
@@ -604,13 +614,13 @@ $('#active-games-grid').addEventListener('click', async (e) => {
     const btn = e.target.closest('button[data-result-game]');
     if (!btn) return;
     const gameId = Number(btn.dataset.resultGame);
-    const side = Number(btn.dataset.side);
     try {
         if (btn.classList.contains('won')) {
             await api(`/api/games/${gameId}/result`, { method: 'DELETE' });
         } else {
-            // typed scores come along; if they say the other side won, the server says so
-            await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify({ winner_side: side, scores: scoresFromBoxes($('#active-games-grid'), gameId) }) });
+            // typed scores come along; if they say someone else won, the server says so
+            const winner = btn.dataset.winnerPlayer ? { winner_player_id: Number(btn.dataset.winnerPlayer) } : { winner_side: Number(btn.dataset.side) };
+            await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify({ ...winner, scores: scoresFromBoxes($('#active-games-grid'), gameId) }) });
         }
         showError('');
         await renderRoundGamesPanel();

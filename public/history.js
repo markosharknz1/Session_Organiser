@@ -304,6 +304,7 @@ $('#committee-csv').addEventListener('click', () => { window.location.href = `/a
 // round's games stacked on one page was too much to scan.
 let sessionRounds = [];
 let sessionRecordsResults = false; // the opened session's "record results" flag
+let sessionScoring = null; // the opened session's scoring preset
 
 function localClockTime(dtStr) {
     return new Date(`${dtStr.replace(' ', 'T')}Z`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -320,6 +321,7 @@ async function openSession(sessionId) {
         mountTonightSummary($('#session-payment-summary'), sessionId);
         sessionRounds = data.rounds;
         sessionRecordsResults = !!data.session.record_results;
+        sessionScoring = scoringFor(data.session.scoring);
         renderRoundList();
     } catch (err) {
         showError(err.message);
@@ -372,7 +374,9 @@ function renderRoundDetail(idx) {
         input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
         input.addEventListener('change', async () => {
             const gameId = Number(input.dataset.scoreGame);
-            const body = scoreBodyFor(container, gameId);
+            autoFillPartner(input, container, sessionScoring);
+            const game = round.games.find((g) => g.id === gameId);
+            const body = scoreBodyFor(container, gameId, game.players.map((p) => p.player_id));
             if (!body) return;
             try {
                 const game = round.games.find((g) => g.id === gameId);
@@ -385,14 +389,14 @@ function renderRoundDetail(idx) {
     });
     container.querySelectorAll('button[data-result-game]').forEach((btn) => btn.addEventListener('click', async () => {
         const gameId = Number(btn.dataset.resultGame);
-        const side = Number(btn.dataset.side);
         try {
             const game = round.games.find((g) => g.id === gameId);
             if (btn.classList.contains('won')) {
                 await api(`/api/games/${gameId}/result`, { method: 'DELETE' });
                 game.result = null;
             } else {
-                game.result = await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify({ winner_side: side, scores: scoresFromBoxes(container, gameId) }) });
+                const winner = btn.dataset.winnerPlayer ? { winner_player_id: Number(btn.dataset.winnerPlayer) } : { winner_side: Number(btn.dataset.side) };
+                game.result = await api(`/api/games/${gameId}/result`, { method: 'PUT', body: JSON.stringify({ ...winner, scores: scoresFromBoxes(container, gameId) }) });
             }
             renderRoundDetail(idx);
         } catch (err) {
@@ -410,11 +414,19 @@ function renderGameRow(g) {
         .map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillTag(p.skill_level_at_time)}`)
         .join(' & ') || '<span class="muted">-</span>';
     if (g.format === 'threes') {
-        // no sides, no "vs": just the three on the court
+        // no sides, no "vs": the three in the box, the box winner in bold
+        const winnerId = g.result ? g.result.winner_player_id : null;
+        const nameOf = (id) => { const p = g.players.find((x) => x.player_id === id); return p ? p.first_name : `#${id}`; };
+        const playerHtml = (p) => `<span class="${winnerId === p.player_id ? 'won' : ''}">${esc(p.first_name)} ${esc(p.last_name)}${skillTag(p.skill_level_at_time)}${sessionRecordsResults
+            ? ` <button type="button" class="small result-btn ${winnerId === p.player_id ? 'won' : ''}" data-result-game="${g.id}" data-winner-player="${p.player_id}">${winnerId === p.player_id ? '&check; Won' : 'Won'}</button>` : ''}</span>`;
+        const scores = sessionRecordsResults
+            ? scoreRowHtml(g, sessionScoring)
+            : (g.result && g.result.scores && g.result.scores.length ? `<span class="score-text">${esc(threesScoresText(g.result, nameOf))}</span>` : '');
         return `
         <div class="history-game">
             <span class="court-tag">Court ${g.court_number}</span>
-            <span class="team">${g.players.map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillTag(p.skill_level_at_time)}`).join(' &middot; ')}</span>
+            <span class="team">${g.players.map(playerHtml).join(' &middot; ')}</span>
+            ${scores}
             <span class="muted">threes</span>
         </div>
     `;
@@ -425,7 +437,7 @@ function renderGameRow(g) {
         : '';
     // Scores: inputs on a night that records results, plain text otherwise.
     const scores = sessionRecordsResults
-        ? scoreRowHtml(g)
+        ? scoreRowHtml(g, sessionScoring)
         : (g.result && g.result.scores && g.result.scores.length
             ? `<span class="score-text">${scoresText(g.result)}</span>` : '');
     return `
@@ -441,8 +453,12 @@ function renderGameRow(g) {
 }
 
 // "21-18" with this player's own side first, when scores were recorded.
-function playerScoreText(g) {
+function playerScoreText(g, playerId) {
     if (!g.scores || !g.scores.length) return '';
+    if (g.format === 'threes') {
+        const nameOf = (id) => { const o = g.opponents.find((x) => x.player_id === id); return o ? o.first_name : `#${id}`; };
+        return ` <span class="score-text">${esc(threesScoresText({ scores: g.scores }, nameOf, playerId))}</span>`;
+    }
     return ` <span class="score-text">${scoresText({ scores: g.scores }, g.side)}</span>`;
 }
 
@@ -478,7 +494,7 @@ async function openPlayer(playerId) {
                 <td class="num">${skillTag(g.skill_level_at_time)}</td>
                 <td>${g.partners.map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillTag(p.skill_level_at_time)}`).join(', ') || '<span class="muted">-</span>'}</td>
                 <td>${g.opponents.map((p) => `${esc(p.first_name)} ${esc(p.last_name)}${skillTag(p.skill_level_at_time)}`).join(', ')}</td>
-                <td class="num">${g.outcome === 'won' ? '<span class="outcome won">W</span>' : g.outcome === 'lost' ? '<span class="outcome lost">L</span>' : '<span class="muted">-</span>'}${playerScoreText(g)}</td>
+                <td class="num">${g.outcome === 'won' ? '<span class="outcome won">W</span>' : g.outcome === 'lost' ? '<span class="outcome lost">L</span>' : '<span class="muted">-</span>'}${playerScoreText(g, playerId)}</td>
             </tr>
         `).join('');
     } catch (err) {
