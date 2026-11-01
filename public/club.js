@@ -103,7 +103,7 @@ function renderOverview() {
     $('#overview-club-name').textContent = clubSettings.club_name;
     $('#overview-icon').src = `/api/branding/icon?v=${clubSettings.club_icon_ver || 0}`;
     const activeCourts = courts.filter((c) => c.is_active).length;
-    $('#overview-club-meta').textContent = `${activeCourts} court${activeCourts === 1 ? '' : 's'} · ${clubSettings.default_game_minutes} min games, ${clubSettings.default_break_minutes} min changeovers · payment tracking ${clubSettings.square_enabled ? 'on' : 'off'}`;
+    $('#overview-club-meta').textContent = `${activeCourts} court${activeCourts === 1 ? '' : 's'} · ${clubSettings.default_game_minutes} min games, ${clubSettings.default_break_minutes} min changeovers · payment tracking ${clubSettings.square_enabled ? 'on' : 'off'} · game results ${clubSettings.record_results ? 'on' : 'off'}`;
 
     const list = $('#overview-sessions');
     if (!templates.length) {
@@ -174,8 +174,10 @@ async function saveClubFields(fields, savedNoteSel) {
         const saved = await api('/api/club-settings', { method: 'PUT', body: JSON.stringify(fields) });
         $('#club-name').textContent = saved.club_name;
         setDateFormat(saved.date_format);
+        const resultsToggled = !!(clubSettings && clubSettings.record_results) !== !!saved.record_results;
         clubSettings = saved;
         renderOverview();
+        if (resultsToggled) renderTemplates(); // the Scoring field comes and goes with the results switch
         showError('');
         flashSaved(savedNoteSel);
     } catch (err) {
@@ -733,11 +735,12 @@ function templateEditHtml(t, idx) {
                         <option value="threes" ${t.default_format === 'threes' ? 'selected' : ''}>Threes (3 a court, no sides - e.g. squash)</option>
                     </select>
                 </div>
+                ${clubSettings && clubSettings.record_results ? `
                 <div class="field">
                     <label>Scoring</label>
                     <select data-field="default_scoring">${scoringOptionsHtml(t.default_scoring)}</select>
-                    <p class="muted" style="font-size:0.78rem; margin: 4px 0 0;">Only matters when game results are recorded: names the score rows (game or set) and fills in the winner's score when just the loser's is typed.</p>
-                </div>
+                    <p class="muted" style="font-size:0.78rem; margin: 4px 0 0;">Names the score rows (game or set) and fills in the winner's score when just the loser's is typed; "Winner only" has no score boxes, just the Won buttons.</p>
+                </div>` : ''}
                 <div class="field">
                     <label>Rotation guideline (optional)</label>
                     <input type="number" min="0" data-field="default_max_capacity" value="${t.default_max_capacity ?? ''}" placeholder="No guideline">
@@ -848,7 +851,7 @@ function readTemplateCard(idx) {
         end_time: value('end_time'),
         default_mode: value('default_mode'),
         default_format: value('default_format'),
-        default_scoring: value('default_scoring'),
+        default_scoring: card.querySelector('[data-field="default_scoring"]') ? value('default_scoring') : (templates[idx].default_scoring ?? null),
         default_max_capacity: capacity === '' ? null : Number(capacity),
         default_game_minutes: gameMinutes === '' ? null : Number(gameMinutes),
         default_break_minutes: breakMinutes === '' ? null : Number(breakMinutes),

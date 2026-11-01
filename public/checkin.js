@@ -9,7 +9,7 @@ let allPlayers = []; // full roster, refreshed on load and on 'players' events
 let sessionPaymentRates = []; // this session's category prices [{payment_category_id, name, amount_cents}]
 let paymentModalContext = null; // { attendanceId } while the payment modal is open
 let paymentTrackingEnabled = false; // club_settings.square_enabled - gates the whole payment feature
-let recordResultsDefault = false; // club_settings.record_results - the default for the start panel's tick
+let resultsEnabled = false; // club_settings.record_results - gates the whole results/scores feature (the start panel's tick, the Scoring choice)
 let checkinModalPlayerId = null; // player id the check-in modal is currently open for
 let checkinModalAttendanceId = null; // set when converting an existing 'booked' row to arrived (vs. a brand-new check-in)
 
@@ -100,7 +100,7 @@ async function init() {
         applyBranding(club);
         setDateFormat(club.date_format);
         paymentTrackingEnabled = !!club.square_enabled;
-        recordResultsDefault = !!club.record_results;
+        resultsEnabled = !!club.record_results;
     } catch (err) {
         // Club settings should always exist (seeded row id=1); non-fatal if it fails.
     }
@@ -203,10 +203,11 @@ async function renderChangeForm(template, date) {
                     <option value="threes" ${template.default_format === 'threes' ? 'selected' : ''}>Threes (3 a court, no sides - e.g. squash)</option>
                 </select>
             </div>
+            ${resultsEnabled ? `
             <div class="field">
                 <label>Scoring</label>
                 <select id="cf-scoring">${scoringOptionsHtml(template.default_scoring)}</select>
-            </div>
+            </div>` : ''}
             <div class="field">
                 <label>Comfortable rotation guideline (optional)</label>
                 <input type="number" id="cf-capacity" value="${template.default_max_capacity ?? ''}" min="0">
@@ -239,7 +240,7 @@ async function renderChangeForm(template, date) {
                     overrides: {
                         mode: $('#cf-mode').value,
                         format: $('#cf-format').value,
-                        scoring: $('#cf-scoring').value,
+                        scoring: $('#cf-scoring') ? $('#cf-scoring').value : undefined,
                         max_capacity: capacityVal === '' ? null : Number(capacityVal),
                         court_ids,
                     },
@@ -267,10 +268,11 @@ async function renderAdhocForm(date) {
                 <label>Format</label>
                 <select id="ah-format"><option value="doubles">Doubles (4 a court)</option><option value="singles">Singles (2 a court, e.g. squash)</option><option value="threes">Threes (3 a court, no sides - e.g. squash)</option></select>
             </div>
+            ${resultsEnabled ? `
             <div class="field">
                 <label>Scoring</label>
                 <select id="ah-scoring">${scoringOptionsHtml()}</select>
-            </div>
+            </div>` : ''}
         </div>
         <div class="field">
             <label>Courts in use</label>
@@ -291,7 +293,7 @@ async function renderAdhocForm(date) {
                     label: $('#ah-label').value,
                     mode: $('#ah-mode').value,
                     format: $('#ah-format').value,
-                    scoring: $('#ah-scoring').value,
+                    scoring: $('#ah-scoring') ? $('#ah-scoring').value : undefined,
                     court_ids,
                     notes: startNote(),
                     record_results: startRecordResults(),
@@ -305,18 +307,20 @@ async function renderAdhocForm(date) {
 }
 
 // The "anything to note about today?" box on the start panel - becomes the
-// session's notes (editable later with the Notes button) - and the
-// "record game results tonight" tick (default from Settings > Game defaults).
+// session's notes (editable later with the Notes button) - and, when
+// Settings > Game defaults has results switched on, the "record game
+// results tonight" tick (ticked by default; untick for a night off).
 function startExtrasHtml() {
     return `
         <div class="field">
             <label for="start-note">Anything to note about today? (optional)</label>
             <input type="text" id="start-note" maxlength="300" placeholder="e.g. Club Champs, public holiday, school holidays, heatwave - explains unusual numbers later">
         </div>
+        ${resultsEnabled ? `
         <div class="field checkbox-row">
-            <input type="checkbox" id="start-results" ${recordResultsDefault ? 'checked' : ''}>
+            <input type="checkbox" id="start-results" checked>
             <label for="start-results">Record game results tonight (a <em>Won</em> button under each side on the Rounds page)</label>
-        </div>`;
+        </div>` : ''}`;
 }
 
 function startNote() {
@@ -326,7 +330,7 @@ function startNote() {
 
 function startRecordResults() {
     const el = $('#start-results');
-    return el ? el.checked : recordResultsDefault;
+    return el ? el.checked : false;
 }
 
 // --- Check-in mode ---

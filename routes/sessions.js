@@ -12,6 +12,15 @@ const MODES = ['auto', 'manual', 'social'];
 const FORMATS = ['doubles', 'singles', 'threes']; // 4 a court, 2 a court, or 3 on a court with no sides (e.g. squash)
 const { SCORING_PRESETS, DEFAULT_SCORING } = require('../public/scoring');
 const scoringKey = (v, fallback = DEFAULT_SCORING) => (SCORING_PRESETS[v] ? v : fallback);
+
+// Whether tonight records results: only while Settings > Game defaults has
+// the feature switched on, and then unless the start panel's tick was
+// cleared for the night.
+function nightRecordsResults(requested) {
+    const club = store.queryOne('SELECT record_results FROM club_settings WHERE id = 1') || {};
+    if (!club.record_results) return 0;
+    return requested === undefined || requested ? 1 : 0;
+}
 const PHASES = ['idle', 'game', 'break', 'awaiting_lineup', 'paused'];
 
 function paymentRatesForSession(sessionId) {
@@ -98,9 +107,7 @@ router.post('/start', (req, res) => {
     // History from the start rather than being added afterwards.
     const notes = String(req.body.notes ?? (overrides && overrides.notes) ?? '').trim() || null;
     // Record who wins tonight? The club's default unless the start panel says otherwise.
-    const recordResults = req.body.record_results === undefined
-        ? (store.queryOne('SELECT record_results FROM club_settings WHERE id = 1') || {}).record_results ? 1 : 0
-        : (req.body.record_results ? 1 : 0);
+    const recordResults = nightRecordsResults(req.body.record_results);
     if (!template_id) return res.status(400).json({ error: 'template_id is required' });
     if (!date) return res.status(400).json({ error: 'date is required' });
 
@@ -203,9 +210,7 @@ router.post('/', (req, res) => {
             [b.template_id ?? null, b.date, b.label ?? null, b.scheduled_start_time ?? null, b.scheduled_end_time ?? null,
                 b.location ?? null, b.status ?? 'open', b.mode, format, scoringKey(b.scoring), b.game_minutes ?? null, b.break_minutes ?? null,
                 b.max_capacity ?? null, b.current_phase ?? 'idle', String(b.notes ?? '').trim() || null,
-                b.record_results === undefined
-                    ? ((store.queryOne('SELECT record_results FROM club_settings WHERE id = 1') || {}).record_results ? 1 : 0)
-                    : (b.record_results ? 1 : 0)]
+                nightRecordsResults(b.record_results)]
         );
         if (Array.isArray(b.court_ids)) {
             for (const courtId of b.court_ids) {

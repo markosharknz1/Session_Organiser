@@ -67,6 +67,7 @@ function threesScoreRowsHtml(g, scoring) {
 }
 
 function scoreRowHtml(g, scoring) {
+    if (scoring && scoring.boxes === false) return ''; // "Winner only": just the Won buttons
     return g.format === 'threes' ? threesScoreRowsHtml(g, scoring) : sidedScoreRowsHtml(g, scoring);
 }
 

@@ -3,7 +3,8 @@
 // games for tennis) and the score a game is normally played to, which lets
 // the boxes fill in the winner's score when only the loser's is typed
 // (type 18 -> 21-18). Nothing here changes who wins: that is still more
-// games/sets won, then more points, then the Won button.
+// games/sets won, then more points, then the Won button. "Winner only"
+// has no boxes at all - just the Won buttons.
 //
 // Loads as a plain <script> in the browser and via require() in Node
 // (routes validate the key with it), hence the dual-export footer.
@@ -17,6 +18,7 @@ const SCORING_PRESETS = {
     pickleball: { label: 'Pickleball - games to 11', unit: 'Game', target: 11 },
     tennis: { label: 'Tennis - sets (games in each set, to 6)', unit: 'Set', target: 6 },
     points: { label: 'Points only - no set score (timed play)', unit: 'Game', target: null },
+    none: { label: 'Winner only - no score boxes', unit: 'Game', target: null, boxes: false },
 };
 const DEFAULT_SCORING = 'badminton';
 
