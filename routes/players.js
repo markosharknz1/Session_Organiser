@@ -185,11 +185,11 @@ router.post('/', (req, res) => {
     const b = req.body;
     try {
         const id = store.insert(
-            `INSERT INTO players (first_name, last_name, email, phone, dob, skill_level, gender, membership_status, membership_number, emergency_contact_name, emergency_contact_phone, notes)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO players (first_name, last_name, email, phone, dob, skill_level, gender, membership_status, membership_number, emergency_contact_name, emergency_contact_phone, notes, rest_every_other)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [b.first_name, b.last_name, b.email ?? null, b.phone ?? null, b.dob ?? null, b.skill_level,
                 b.gender ?? null, b.membership_status ?? 'active', b.membership_number ?? null,
-                b.emergency_contact_name ?? null, b.emergency_contact_phone ?? null, b.notes ?? null]
+                b.emergency_contact_name ?? null, b.emergency_contact_phone ?? null, b.notes ?? null, b.rest_every_other ? 1 : 0]
         );
         store.persist();
         broadcast('players', { player_id: id });
@@ -209,11 +209,11 @@ router.put('/:id', (req, res) => {
     try {
         store.run(
             `UPDATE players SET first_name=?, last_name=?, email=?, phone=?, dob=?, skill_level=?, gender=?,
-             membership_status=?, membership_number=?, emergency_contact_name=?, emergency_contact_phone=?, notes=?
+             membership_status=?, membership_number=?, emergency_contact_name=?, emergency_contact_phone=?, notes=?, rest_every_other=?
              WHERE id=?`,
             [merged.first_name, merged.last_name, merged.email, merged.phone, merged.dob, merged.skill_level,
                 merged.gender, merged.membership_status, merged.membership_number, merged.emergency_contact_name,
-                merged.emergency_contact_phone, merged.notes, req.params.id]
+                merged.emergency_contact_phone, merged.notes, merged.rest_every_other ? 1 : 0, req.params.id]
         );
         store.persist();
         broadcast('players', { player_id: Number(req.params.id) });

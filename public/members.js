@@ -46,7 +46,7 @@ function memberRowReadonlyHtml(p) {
     const statusLabel = { active: 'Active', lapsed: 'Lapsed', guest: 'Guest' }[p.membership_status] || p.membership_status;
     return `
         <tr data-id="${p.id}">
-            <td>${esc(p.first_name)} ${esc(p.last_name)}</td>
+            <td>${esc(p.first_name)} ${esc(p.last_name)}${p.rest_every_other ? ' <span class="alt-badge" title="Plays every 2nd game - sits out the round after each one played">every 2nd game</span>' : ''}</td>
             <td>${skillBadge(p.skill_level)}</td>
             <td>${p.gender || '-'}</td>
             <td class="muted">${statusLabel}</td>
@@ -65,6 +65,7 @@ function memberRowEditHtml(p) {
             <td>
                 <input type="text" data-field="first_name" value="${esc(p.first_name)}" style="width:90px;">
                 <input type="text" data-field="last_name" value="${esc(p.last_name)}" style="width:110px;">
+                <label style="display:block; font-size:0.8rem; margin-top:4px;"><input type="checkbox" data-field="rest_every_other" ${p.rest_every_other ? 'checked' : ''}> Plays every 2nd game</label>
             </td>
             <td>
                 <select data-field="skill_level">
@@ -136,6 +137,7 @@ async function saveMemberRow(id, tr) {
                 gender: field('gender') || null,
                 membership_status: field('membership_status'),
                 membership_number: field('membership_number') || null,
+                rest_every_other: document.querySelector(`tr[data-id="${id}"] [data-field="rest_every_other"]`).checked,
             }),
         });
         editingMemberId = null;
@@ -190,9 +192,11 @@ $('#am-submit').addEventListener('click', async () => {
                 skill_level: $('#am-skill').value,
                 gender: $('#am-gender').value || null,
                 membership_status: $('#am-status').value,
+                rest_every_other: $('#am-alternate').checked,
             }),
         });
         $('#am-name').value = '';
+        $('#am-alternate').checked = false;
         $('#add-member-form').style.display = 'none';
         showError('');
         await loadMembers();

@@ -77,7 +77,7 @@ router.post('/sessions/:sessionId/attendance', (req, res) => {
     const sessionId = req.params.sessionId;
     const session = store.queryOne('SELECT * FROM sessions WHERE id = ?', [sessionId]);
     if (!session) return res.status(404).json({ error: 'Session not found' });
-    const { player_id, state, payment_category_id, payment_amount_cents, payment_method, payment_note, first_time, new_member } = req.body;
+    const { player_id, state, payment_category_id, payment_amount_cents, payment_method, payment_note, first_time, new_member, alternate_rounds } = req.body;
     if (!player_id) return res.status(400).json({ error: 'player_id is required' });
     const player = store.queryOne('SELECT * FROM players WHERE id = ?', [player_id]);
     if (!player) return res.status(404).json({ error: 'Player not found' });
@@ -95,10 +95,12 @@ router.post('/sessions/:sessionId/attendance', (req, res) => {
 
     try {
         const id = store.insert(
-            `INSERT INTO attendance (session_id, player_id, state, was_booked, payment_category_id, payment_amount_cents, payment_method, payment_note, first_time, new_member)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO attendance (session_id, player_id, state, was_booked, alternate_rounds, payment_category_id, payment_amount_cents, payment_method, payment_note, first_time, new_member)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 sessionId, player_id, s, s === 'booked' ? 1 : 0,
+                // "plays every 2nd game": the player's standing setting unless the check-in says otherwise
+                (alternate_rounds === undefined ? player.rest_every_other : alternate_rounds) ? 1 : 0,
                 paymentFields.payment_category_id ?? null,
                 paymentFields.payment_amount_cents ?? null,
                 paymentFields.payment_method ?? null,
@@ -168,7 +170,7 @@ router.put('/attendance/:id', (req, res) => {
     }
     try {
         store.run(
-            `UPDATE attendance SET state=?, left_reason=?, leave_note=?, leave_after_round=?, rest_round=?, payment_category_id=?, payment_amount_cents=?, payment_method=?, payment_note=?, first_time=?, new_member=?
+            `UPDATE attendance SET state=?, left_reason=?, leave_note=?, leave_after_round=?, rest_round=?, alternate_rounds=?, payment_category_id=?, payment_amount_cents=?, payment_method=?, payment_note=?, first_time=?, new_member=?
              WHERE id=?`,
             [
                 merged.state,
@@ -176,6 +178,7 @@ router.put('/attendance/:id', (req, res) => {
                 merged.state === 'left' ? (String(merged.leave_note || '').trim() || null) : null,
                 leaveAfterRound,
                 restRound,
+                merged.alternate_rounds ? 1 : 0,
                 merged.payment_category_id ?? null,
                 merged.payment_amount_cents ?? null,
                 merged.payment_method ?? null,
@@ -209,6 +212,24 @@ router.put('/attendance/:id', (req, res) => {
             affectedStagedGames += vacateStagedRound(existing.session_id, existing.player_id, restRound);
         } else if (restRound === null && existing.rest_round) {
             affectedStagedGames += clearVacanciesFor(existing.session_id, existing.player_id, existing.rest_round);
+        }
+        // "Plays every 2nd game" switched on while they are on court: they
+        // sit out the next round from now. Switched off: any rest pending
+        // goes with it (they're back in the pool).
+        const alternateNow = merged.alternate_rounds ? 1 : 0;
+        if (merged.state !== 'left' && alternateNow && !existing.alternate_rounds && restRound === null) {
+            const playing = store.queryOne(
+                `SELECT g.round_number FROM games g JOIN game_players gp ON gp.game_id = g.id
+                 WHERE g.session_id = ? AND gp.player_id = ? AND g.status = 'active' LIMIT 1`,
+                [existing.session_id, existing.player_id]
+            );
+            if (playing) {
+                store.run('UPDATE attendance SET rest_round = ? WHERE id = ?', [playing.round_number + 1, req.params.id]);
+                affectedStagedGames += vacateStagedRound(existing.session_id, existing.player_id, playing.round_number + 1);
+            }
+        } else if (!alternateNow && existing.alternate_rounds && restRound !== null && restRound === existing.rest_round) {
+            store.run('UPDATE attendance SET rest_round = NULL WHERE id = ?', [req.params.id]);
+            affectedStagedGames += clearVacanciesFor(existing.session_id, existing.player_id, restRound);
         }
 
         store.persist();

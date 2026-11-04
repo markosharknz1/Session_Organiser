@@ -639,6 +639,17 @@ nav.app-nav a.active {
 }
 
 /* Break for 1 game: amber, and clearly not in play. */
+.alt-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border: 1px solid #2563eb;
+    border-radius: 10px;
+    color: #2563eb;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
 .break-badge {
     display: inline-block;
     margin-left: 6px;

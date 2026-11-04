@@ -573,6 +573,7 @@ function openEditPlayerModal(playerId) {
     $('#ep-grade').value = p.skill_level;
     $('#ep-gender').value = p.gender || '';
     $('#ep-status').value = p.membership_status;
+    $('#ep-alternate').checked = !!p.rest_every_other;
     $('#ep-error').style.display = 'none';
     $('#edit-player-modal-backdrop').style.display = 'flex';
     $('#ep-first').focus();
@@ -606,6 +607,7 @@ $('#ep-save').addEventListener('click', async () => {
                 skill_level: $('#ep-grade').value,
                 gender: $('#ep-gender').value || null,
                 membership_status: $('#ep-status').value,
+                rest_every_other: $('#ep-alternate').checked,
             }),
         });
         const idx = allPlayers.findIndex((x) => x.id === editPlayerId);

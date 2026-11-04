@@ -119,7 +119,9 @@ function validateLineup({ sessionId, courtId, roundNumber, format, players, excl
             continue;
         }
         if (attendance.rest_round !== null && attendance.rest_round !== undefined && roundNumber === attendance.rest_round) {
-            errors.push(`${name()} is having a break in round ${roundNumber}`);
+            errors.push(attendance.alternate_rounds
+                ? `${name()} plays every 2nd game and sits out round ${roundNumber} (right-click them for "Back in play" to override)`
+                : `${name()} is having a break in round ${roundNumber}`);
             continue;
         }
         const doubleBooked = store.queryOne(

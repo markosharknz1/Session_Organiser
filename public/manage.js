@@ -838,8 +838,8 @@ function renderBuilder() {
     const onBreak = attendancePool.filter((p) => p.rest_round === buildRound && !used.has(p.player_id)).sort(byLastName);
     if (onBreak.length) {
         poolEl.insertAdjacentHTML('beforeend', `<div class="pool-section-label">On break this round (${onBreak.length})</div>` + onBreak.map((p) => `
-        <div class="pool-player on-break" data-player-id="${p.player_id}" title="Sitting out round ${p.rest_round} - right-click to put them back in play">
-            <span>${p.first_name} ${p.last_name}${skillBadge(p.skill_level)}${genderBadge(p.gender)} <span class="break-badge">break</span></span>
+        <div class="pool-player on-break" data-player-id="${p.player_id}" title="Sitting out round ${p.rest_round}${p.alternate_rounds ? ' (plays every 2nd game)' : ''} - right-click to put them back in play">
+            <span>${p.first_name} ${p.last_name}${skillBadge(p.skill_level)}${genderBadge(p.gender)} <span class="break-badge">break</span>${p.alternate_rounds ? ' <span class="alt-badge">every 2nd game</span>' : ''}</span>
         </div>`).join(''));
     }
 
