@@ -13,6 +13,12 @@ const FORMATS = ['doubles', 'singles', 'threes']; // 4 a court, 2 a court, or 3 
 const { SCORING_PRESETS, DEFAULT_SCORING } = require('../public/scoring');
 const scoringKey = (v, fallback = DEFAULT_SCORING) => (SCORING_PRESETS[v] ? v : fallback);
 
+// The club's sport - what a template (or a one-off night) scores by unless
+// it says otherwise.
+function clubScoring() {
+    return scoringKey((store.queryOne('SELECT default_scoring FROM club_settings WHERE id = 1') || {}).default_scoring);
+}
+
 // Whether tonight records results: only while Settings > Game defaults has
 // the feature switched on, and then unless the start panel's tick was
 // cleared for the night.
@@ -122,7 +128,7 @@ router.post('/start', (req, res) => {
     const o = overrides || {};
     const mode = o.mode && MODES.includes(o.mode) ? o.mode : template.default_mode;
     const format = o.format && FORMATS.includes(o.format) ? o.format : (template.default_format || 'doubles');
-    const scoring = scoringKey(o.scoring, scoringKey(template.default_scoring));
+    const scoring = scoringKey(o.scoring, scoringKey(template.default_scoring, clubScoring()));
     const max_capacity = o.max_capacity !== undefined ? o.max_capacity : template.default_max_capacity;
     // Falls through to the template's own default when set, then further to
     // club_settings.default_game_minutes/break_minutes at round-start time
@@ -208,7 +214,7 @@ router.post('/', (req, res) => {
             `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, scoring, game_minutes, break_minutes, max_capacity, current_phase, notes, record_results)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [b.template_id ?? null, b.date, b.label ?? null, b.scheduled_start_time ?? null, b.scheduled_end_time ?? null,
-                b.location ?? null, b.status ?? 'open', b.mode, format, scoringKey(b.scoring), b.game_minutes ?? null, b.break_minutes ?? null,
+                b.location ?? null, b.status ?? 'open', b.mode, format, scoringKey(b.scoring, clubScoring()), b.game_minutes ?? null, b.break_minutes ?? null,
                 b.max_capacity ?? null, b.current_phase ?? 'idle', String(b.notes ?? '').trim() || null,
                 nightRecordsResults(b.record_results)]
         );

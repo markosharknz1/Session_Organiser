@@ -9,7 +9,11 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MODES = ['auto', 'manual', 'social'];
 const FORMATS = ['doubles', 'singles', 'threes'];
 const { SCORING_PRESETS, DEFAULT_SCORING } = require('../public/scoring');
-const scoringKey = (v) => (SCORING_PRESETS[v] ? v : DEFAULT_SCORING);
+// A template's scoring is a preset key, or 'club' to follow the club's
+// sport (Settings > Game defaults). Anything unrecognised means "follow the
+// club".
+const scoringKey = (v) => (SCORING_PRESETS[v] ? v : 'club');
+void DEFAULT_SCORING;
 
 function dayOfWeekFor(dateStr) {
     const d = new Date(`${dateStr}T00:00:00`);

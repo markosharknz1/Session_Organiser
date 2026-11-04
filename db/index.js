@@ -225,7 +225,7 @@ function ensureColumns(db) {
         db.run(`ALTER TABLE sessions ADD COLUMN scoring TEXT NOT NULL DEFAULT 'badminton'`);
     }
     if (!templateColsNow.includes('default_scoring')) {
-        db.run(`ALTER TABLE session_templates ADD COLUMN default_scoring TEXT NOT NULL DEFAULT 'badminton'`);
+        db.run(`ALTER TABLE session_templates ADD COLUMN default_scoring TEXT NOT NULL DEFAULT 'club'`); // 'club' = follow the club's sport
     }
     if (!sessionColsNow.includes('record_results')) {
         // Results (who won) recorded tonight? Off unless ticked at the start.
@@ -287,6 +287,14 @@ function ensureColumns(db) {
     if (!clubSettingsCols.includes('record_results')) {
         // The default for the "record game results tonight" tick on the start panel.
         db.run(`ALTER TABLE club_settings ADD COLUMN record_results INTEGER NOT NULL DEFAULT 0 CHECK (record_results IN (0,1))`);
+    }
+    if (!clubSettingsCols.includes('default_scoring')) {
+        // The club's sport (Settings > Game defaults > Sport / scoring):
+        // templates inherit it unless they say otherwise. Templates created
+        // before it existed were filled with 'badminton' - the club default
+        // at that point - so they now follow the club instead.
+        db.run(`ALTER TABLE club_settings ADD COLUMN default_scoring TEXT NOT NULL DEFAULT 'badminton'`);
+        db.run(`UPDATE session_templates SET default_scoring = 'club' WHERE default_scoring = 'badminton'`);
     }
     if (!clubSettingsCols.includes('allow_network_access')) {
         // Off by default: the server binds to 127.0.0.1 and Windows never

@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS session_templates (
     default_format TEXT NOT NULL DEFAULT 'doubles' CHECK (default_format IN ('doubles','singles','threes')),
     -- How the sport scores (public/scoring.js presets): names the score
     -- rows (game / set) and the score a game is played to.
-    default_scoring TEXT NOT NULL DEFAULT 'badminton',
+    default_scoring TEXT NOT NULL DEFAULT 'club', -- a scoring preset key, or 'club' to follow the club's sport
     default_max_capacity INTEGER,
     -- Null falls back to club_settings.default_game_minutes/default_break_minutes.
     default_game_minutes INTEGER,
@@ -265,9 +265,13 @@ CREATE TABLE IF NOT EXISTS club_settings (
     -- club's network too, so the External Display can be opened on another
     -- device (a TV on the wifi). Read once, at server start - see server.js.
     allow_network_access INTEGER NOT NULL DEFAULT 0 CHECK (allow_network_access IN (0,1)),
-    -- Record who won each game (optional - the start panel can turn it on
-    -- or off per night; this is the default for that tick).
+    -- Record who won each game and the scores: the switch for the whole
+    -- results feature (off hides it everywhere; on, the start panel can
+    -- still skip it for a night).
     record_results INTEGER NOT NULL DEFAULT 0 CHECK (record_results IN (0,1)),
+    -- The club's sport: the scoring preset (public/scoring.js) templates
+    -- follow unless one says otherwise.
+    default_scoring TEXT NOT NULL DEFAULT 'badminton',
     -- Access PIN other devices must enter (lib/access.js): a salted scrypt
     -- hash of the PIN, and a random per-install secret the devices' sign-in
     -- cookies are derived from. Never returned by the API.

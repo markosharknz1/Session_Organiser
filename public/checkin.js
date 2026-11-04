@@ -10,6 +10,7 @@ let sessionPaymentRates = []; // this session's category prices [{payment_catego
 let paymentModalContext = null; // { attendanceId } while the payment modal is open
 let paymentTrackingEnabled = false; // club_settings.square_enabled - gates the whole payment feature
 let resultsEnabled = false; // club_settings.record_results - gates the whole results/scores feature (the start panel's tick, the Scoring choice)
+let clubScoring = null; // club_settings.default_scoring - the sport templates and one-off nights follow unless told otherwise
 let checkinModalPlayerId = null; // player id the check-in modal is currently open for
 let checkinModalAttendanceId = null; // set when converting an existing 'booked' row to arrived (vs. a brand-new check-in)
 
@@ -101,6 +102,7 @@ async function init() {
         setDateFormat(club.date_format);
         paymentTrackingEnabled = !!club.square_enabled;
         resultsEnabled = !!club.record_results;
+        clubScoring = club.default_scoring || null;
     } catch (err) {
         // Club settings should always exist (seeded row id=1); non-fatal if it fails.
     }
@@ -206,7 +208,7 @@ async function renderChangeForm(template, date) {
             ${resultsEnabled ? `
             <div class="field">
                 <label>Scoring</label>
-                <select id="cf-scoring">${scoringOptionsHtml(template.default_scoring)}</select>
+                <select id="cf-scoring">${scoringOptionsHtml(template.default_scoring, clubScoring)}</select>
             </div>` : ''}
             <div class="field">
                 <label>Comfortable rotation guideline (optional)</label>
@@ -271,7 +273,7 @@ async function renderAdhocForm(date) {
             ${resultsEnabled ? `
             <div class="field">
                 <label>Scoring</label>
-                <select id="ah-scoring">${scoringOptionsHtml()}</select>
+                <select id="ah-scoring">${scoringOptionsHtml('', clubScoring)}</select>
             </div>` : ''}
         </div>
         <div class="field">

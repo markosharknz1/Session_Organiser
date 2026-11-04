@@ -147,6 +147,7 @@ async function loadSettings() {
     $('#cs-square').checked = !!s.square_enabled;
     $('#cs-gender-aware').checked = !!s.gender_aware_pairing;
     $('#cs-results').checked = !!s.record_results;
+    $('#cs-scoring').innerHTML = scoringOptionsHtml(s.default_scoring);
     $('#cs-network').checked = !!s.allow_network_access;
     $('#icon-preview').src = `/api/branding/icon?v=${s.club_icon_ver || 0}`;
     emailDefaultProvider = s.email_provider || 'smtp2go';
@@ -174,10 +175,10 @@ async function saveClubFields(fields, savedNoteSel) {
         const saved = await api('/api/club-settings', { method: 'PUT', body: JSON.stringify(fields) });
         $('#club-name').textContent = saved.club_name;
         setDateFormat(saved.date_format);
-        const resultsToggled = !!(clubSettings && clubSettings.record_results) !== !!saved.record_results;
+        const scoringChanged = !clubSettings || !!clubSettings.record_results !== !!saved.record_results || clubSettings.default_scoring !== saved.default_scoring;
         clubSettings = saved;
         renderOverview();
-        if (resultsToggled) renderTemplates(); // the Scoring field comes and goes with the results switch
+        if (scoringChanged) renderTemplates(); // the Scoring field (and its "Club default - ..." entry) follows Game defaults
         showError('');
         flashSaved(savedNoteSel);
     } catch (err) {
@@ -193,6 +194,7 @@ $('#cs-defaults-save').addEventListener('click', () => saveClubFields({
     square_enabled: $('#cs-square').checked,
     gender_aware_pairing: $('#cs-gender-aware').checked,
     record_results: $('#cs-results').checked,
+    default_scoring: $('#cs-scoring').value,
 }, '#cs-defaults-saved'));
 
 // --- Other computers: let a second PC / TV open this computer's app ---
@@ -738,8 +740,8 @@ function templateEditHtml(t, idx) {
                 ${clubSettings && clubSettings.record_results ? `
                 <div class="field">
                     <label>Scoring</label>
-                    <select data-field="default_scoring">${scoringOptionsHtml(t.default_scoring)}</select>
-                    <p class="muted" style="font-size:0.78rem; margin: 4px 0 0;">Names the score rows (game or set) and fills in the winner's score when just the loser's is typed; "Winner only" has no score boxes, just the Won buttons.</p>
+                    <select data-field="default_scoring">${scoringOptionsHtml(t.default_scoring, clubSettings.default_scoring)}</select>
+                    <p class="muted" style="font-size:0.78rem; margin: 4px 0 0;">Follows the club's sport under Game defaults unless this template plays something else. "Winner only" has no score boxes, just the Won buttons.</p>
                 </div>` : ''}
                 <div class="field">
                     <label>Rotation guideline (optional)</label>
@@ -851,7 +853,7 @@ function readTemplateCard(idx) {
         end_time: value('end_time'),
         default_mode: value('default_mode'),
         default_format: value('default_format'),
-        default_scoring: card.querySelector('[data-field="default_scoring"]') ? value('default_scoring') : (templates[idx].default_scoring ?? null),
+        default_scoring: card.querySelector('[data-field="default_scoring"]') ? value('default_scoring') : (templates[idx].default_scoring ?? 'club'),
         default_max_capacity: capacity === '' ? null : Number(capacity),
         default_game_minutes: gameMinutes === '' ? null : Number(gameMinutes),
         default_break_minutes: breakMinutes === '' ? null : Number(breakMinutes),

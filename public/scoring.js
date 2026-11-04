@@ -26,9 +26,16 @@ function scoringFor(key) {
     return SCORING_PRESETS[key] || SCORING_PRESETS[DEFAULT_SCORING];
 }
 
-function scoringOptionsHtml(selected) {
-    const current = SCORING_PRESETS[selected] ? selected : DEFAULT_SCORING;
-    return Object.entries(SCORING_PRESETS)
+// With clubDefault (a preset key), the list starts with "Club default -
+// <that sport>" (value "club") and an unrecognised selection picks it;
+// without, an unrecognised selection falls back to badminton.
+function scoringOptionsHtml(selected, clubDefault) {
+    const inherit = clubDefault !== undefined && clubDefault !== null;
+    const current = SCORING_PRESETS[selected] ? selected : (inherit ? 'club' : DEFAULT_SCORING);
+    const head = inherit
+        ? `<option value="club" ${current === 'club' ? 'selected' : ''}>Club default - ${scoringFor(clubDefault).label}</option>`
+        : '';
+    return head + Object.entries(SCORING_PRESETS)
         .map(([key, p]) => `<option value="${key}" ${key === current ? 'selected' : ''}>${p.label}</option>`)
         .join('');
 }
