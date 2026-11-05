@@ -197,12 +197,6 @@ function closeStaleOpenSessions(db) {
 // PRAGMA table_info first), so it's always safe to call on every server boot
 // alongside ensureBaselineDefaults, and never touches existing data.
 function ensureColumns(db) {
-    // "Plays every 2nd game" - see players.rest_every_other in schema.sql.
-    const playerCols = all(db, `PRAGMA table_info(players)`).map((c) => c.name);
-    if (!playerCols.includes('rest_every_other')) {
-        db.run(`ALTER TABLE players ADD COLUMN rest_every_other INTEGER NOT NULL DEFAULT 0 CHECK (rest_every_other IN (0,1))`);
-    }
-
     const attendanceCols = all(db, `PRAGMA table_info(attendance)`).map((c) => c.name);
     if (!attendanceCols.includes('new_member')) {
         db.run(`ALTER TABLE attendance ADD COLUMN new_member INTEGER NOT NULL DEFAULT 0 CHECK (new_member IN (0,1))`);

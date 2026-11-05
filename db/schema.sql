@@ -15,11 +15,7 @@ CREATE TABLE IF NOT EXISTS players (
     emergency_contact_name TEXT,
     emergency_contact_phone TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    notes TEXT,
-    -- "Plays every 2nd game": sits out the round after each one played
-    -- (older players pacing themselves). Copied to attendance.alternate_rounds
-    -- at check-in, where it can be switched for the night.
-    rest_every_other INTEGER NOT NULL DEFAULT 0 CHECK (rest_every_other IN (0,1))
+    notes TEXT
 );
 
 CREATE TABLE IF NOT EXISTS courts (
@@ -152,9 +148,10 @@ CREATE TABLE IF NOT EXISTS attendance (
     -- "Break for 1 game": the one round this player sits out. They can't be
     -- put on a court for it; cleared when that round ends. NULL = playing.
     rest_round INTEGER,
-    -- "Plays every 2nd game" tonight (from players.rest_every_other at
-    -- check-in; right-click to change for the night). When a round they are
-    -- in goes on court, rest_round is set to the next one.
+    -- "Plays every 2nd game": sits out the round after each one played
+    -- (older players pacing themselves). Remembered night to night the way
+    -- the payment category is: check-in starts from the player's last row.
+    -- When a round they are in goes on court, rest_round is set to the next.
     alternate_rounds INTEGER NOT NULL DEFAULT 0 CHECK (alternate_rounds IN (0,1))
 );
 

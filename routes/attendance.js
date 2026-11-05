@@ -73,6 +73,13 @@ router.get('/sessions/:sessionId/attendance', (req, res) => {
 // information" report. A single atomic write closes that window entirely:
 // since sql.js is synchronous with no await gap in this handler, it either
 // fully succeeds or fully fails with nothing persisted.
+// The flag follows the player night to night the way the payment
+// category does: a check-in that doesn't say starts from their last row.
+function lastAlternateRounds(playerId) {
+    const row = store.queryOne('SELECT alternate_rounds FROM attendance WHERE player_id = ? ORDER BY id DESC LIMIT 1', [playerId]);
+    return row ? row.alternate_rounds : 0;
+}
+
 router.post('/sessions/:sessionId/attendance', (req, res) => {
     const sessionId = req.params.sessionId;
     const session = store.queryOne('SELECT * FROM sessions WHERE id = ?', [sessionId]);
@@ -99,8 +106,8 @@ router.post('/sessions/:sessionId/attendance', (req, res) => {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 sessionId, player_id, s, s === 'booked' ? 1 : 0,
-                // "plays every 2nd game": the player's standing setting unless the check-in says otherwise
-                (alternate_rounds === undefined ? player.rest_every_other : alternate_rounds) ? 1 : 0,
+                // "plays every 2nd game": what the check-in says, else what they did last time
+                (alternate_rounds === undefined ? lastAlternateRounds(player_id) : alternate_rounds) ? 1 : 0,
                 paymentFields.payment_category_id ?? null,
                 paymentFields.payment_amount_cents ?? null,
                 paymentFields.payment_method ?? null,

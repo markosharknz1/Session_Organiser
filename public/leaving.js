@@ -185,10 +185,11 @@
         if (onDone) await onDone();
     }
 
-    // --- Plays every 2nd game (tonight) ---
-    // Sits out the round after each one played. The player's standing
-    // setting (Player Database / Edit player) is what check-in starts from;
-    // this switches it for the night only.
+    // --- Plays every 2nd game ---
+    // Sits out the round after each one played. Set at check-in (ticked by
+    // default if that's how they played last time, like the payment) and
+    // switched here for the rest of the night - which is what next week's
+    // check-in will then start from.
     async function setAlternate(a, on, { onDone } = {}) {
         await api(`/api/attendance/${a.id}`, { method: 'PUT', body: JSON.stringify({ alternate_rounds: !!on }) });
         if (onDone) await onDone();
@@ -201,7 +202,7 @@
         let html = '';
         if (a.leave_after_round) html += ` <span class="leaving-badge" title="Leaving after round ${a.leave_after_round}">leaving after R${a.leave_after_round}</span>`;
         if (a.rest_round) html += ` <span class="break-badge" title="Having a break - sits out round ${a.rest_round}">break R${a.rest_round}</span>`;
-        if (a.alternate_rounds) html += ' <span class="alt-badge" title="Plays every 2nd game tonight - sits out the round after each one played">every 2nd game</span>';
+        if (a.alternate_rounds) html += ' <span class="alt-badge" title="Plays every 2nd game - sits out the round after each one played">every 2nd game</span>';
         return html;
     }
 
@@ -215,8 +216,8 @@
             items.push({ label: 'Break for 1 game (sits out the next round)', run: () => takeBreak(a, { onDone }).catch(report) });
         }
         items.push(a.alternate_rounds
-            ? { label: 'Plays every game tonight (stops the every-2nd-game rests)', run: () => setAlternate(a, false, { onDone }).catch(report) }
-            : { label: 'Plays every 2nd game tonight (sits out the round after each one played)', run: () => setAlternate(a, true, { onDone }).catch(report) });
+            ? { label: 'Plays every game (stops the every-2nd-game rests)', run: () => setAlternate(a, false, { onDone }).catch(report) }
+            : { label: 'Plays every 2nd game (sits out the round after each one played)', run: () => setAlternate(a, true, { onDone }).catch(report) });
         if (a.leave_after_round) {
             items.push({ label: `Staying after all (was leaving after round ${a.leave_after_round})`, run: () => stayAfterAll(a, { onDone }).catch((err) => (typeof showError === 'function' ? showError : alert)(err.message)) });
         }

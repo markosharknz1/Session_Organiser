@@ -573,7 +573,6 @@ function openEditPlayerModal(playerId) {
     $('#ep-grade').value = p.skill_level;
     $('#ep-gender').value = p.gender || '';
     $('#ep-status').value = p.membership_status;
-    $('#ep-alternate').checked = !!p.rest_every_other;
     $('#ep-error').style.display = 'none';
     $('#edit-player-modal-backdrop').style.display = 'flex';
     $('#ep-first').focus();
@@ -607,7 +606,6 @@ $('#ep-save').addEventListener('click', async () => {
                 skill_level: $('#ep-grade').value,
                 gender: $('#ep-gender').value || null,
                 membership_status: $('#ep-status').value,
-                rest_every_other: $('#ep-alternate').checked,
             }),
         });
         const idx = allPlayers.findIndex((x) => x.id === editPlayerId);
@@ -656,6 +654,25 @@ function splitFullName(fullName) {
 // locked in, and only applied if that category is actually one of
 // tonight's session rates (a one-off session's rate list might not
 // include it at all).
+// Same idea for "plays every 2nd game": ticked if that's how they played
+// last time they were in anywhere. Converting a booking starts from the
+// booked row (which already got that default when it was made).
+async function applyLastAlternateDefault(playerId, attendanceId) {
+    if (attendanceId) {
+        const row = attendance.find((x) => x.id === attendanceId);
+        $('#cm-alternate').checked = !!(row && row.alternate_rounds);
+        return;
+    }
+    let last;
+    try {
+        last = await api(`/api/players/${playerId}/last-alternate-rounds`);
+    } catch (err) {
+        return; // non-fatal - the tick just stays clear
+    }
+    if (!last || checkinModalPlayerId !== playerId) return;
+    $('#cm-alternate').checked = !!last.alternate_rounds;
+}
+
 async function applyLastPaymentCategoryDefault(playerId) {
     let last;
     try {
@@ -692,6 +709,8 @@ function openCheckinModal(playerId, attendanceId = null) {
     fillEditFormFromPlayer(p);
     $('#cm-error').style.display = 'none';
     $('#cm-visitor-new-member').checked = false;
+    $('#cm-alternate').checked = false;
+    applyLastAlternateDefault(playerId, attendanceId);
 
     if (paymentTrackingEnabled && sessionPaymentRates.length === 0) {
         // Should be rare now that a new session always gets seeded with at
@@ -917,7 +936,7 @@ $('#cm-checkin').addEventListener('click', async () => {
     // still two independent columns (first_time, new_member) for existing
     // reports, just no longer distinguished from each other at check-in.
     const visitorOrNewMember = $('#cm-visitor-new-member').checked;
-    const patch = {};
+    const patch = { alternate_rounds: $('#cm-alternate').checked };
     if (paymentTrackingEnabled) {
         patch.payment_category_id = categoryId;
         patch.payment_amount_cents = amountCents;

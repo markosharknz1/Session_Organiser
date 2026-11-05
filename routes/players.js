@@ -158,6 +158,18 @@ router.get('/:id', (req, res) => {
 // session (is it even one of this session's configured rates) is the
 // caller's job - a player's usual category might not exist on an ad-hoc
 // one-off session's rate list, for instance.
+// Whether this player played every 2nd game last time they were checked
+// in anywhere - the same memory as the payment category, so a regular who
+// paces themselves is ticked by default at check-in, and one who played
+// every game last week starts off unticked. Null if they've never been in.
+router.get('/:id/last-alternate-rounds', (req, res) => {
+    const row = store.queryOne(
+        'SELECT alternate_rounds FROM attendance WHERE player_id = ? ORDER BY id DESC LIMIT 1',
+        [req.params.id]
+    );
+    res.json(row ? { alternate_rounds: row.alternate_rounds ? 1 : 0 } : null);
+});
+
 router.get('/:id/last-payment-category', (req, res) => {
     const row = store.queryOne(
         `SELECT a.payment_category_id, pc.name
@@ -185,11 +197,11 @@ router.post('/', (req, res) => {
     const b = req.body;
     try {
         const id = store.insert(
-            `INSERT INTO players (first_name, last_name, email, phone, dob, skill_level, gender, membership_status, membership_number, emergency_contact_name, emergency_contact_phone, notes, rest_every_other)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO players (first_name, last_name, email, phone, dob, skill_level, gender, membership_status, membership_number, emergency_contact_name, emergency_contact_phone, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [b.first_name, b.last_name, b.email ?? null, b.phone ?? null, b.dob ?? null, b.skill_level,
                 b.gender ?? null, b.membership_status ?? 'active', b.membership_number ?? null,
-                b.emergency_contact_name ?? null, b.emergency_contact_phone ?? null, b.notes ?? null, b.rest_every_other ? 1 : 0]
+                b.emergency_contact_name ?? null, b.emergency_contact_phone ?? null, b.notes ?? null]
         );
         store.persist();
         broadcast('players', { player_id: id });
@@ -209,11 +221,11 @@ router.put('/:id', (req, res) => {
     try {
         store.run(
             `UPDATE players SET first_name=?, last_name=?, email=?, phone=?, dob=?, skill_level=?, gender=?,
-             membership_status=?, membership_number=?, emergency_contact_name=?, emergency_contact_phone=?, notes=?, rest_every_other=?
+             membership_status=?, membership_number=?, emergency_contact_name=?, emergency_contact_phone=?, notes=?
              WHERE id=?`,
             [merged.first_name, merged.last_name, merged.email, merged.phone, merged.dob, merged.skill_level,
                 merged.gender, merged.membership_status, merged.membership_number, merged.emergency_contact_name,
-                merged.emergency_contact_phone, merged.notes, merged.rest_every_other ? 1 : 0, req.params.id]
+                merged.emergency_contact_phone, merged.notes, req.params.id]
         );
         store.persist();
         broadcast('players', { player_id: Number(req.params.id) });
