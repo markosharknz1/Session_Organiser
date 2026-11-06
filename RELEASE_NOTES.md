@@ -1,8 +1,8 @@
-## Game Scheduler v1.0.20
+## Game Scheduler v1.0.21
 
 ### Installing
 
-1. Download **`GameScheduler-v1.0.20.zip`** below.
+1. Download **`GameScheduler-v1.0.21.zip`** below.
 2. **Before extracting it:** right-click the ZIP > **Properties** > tick **Unblock** (bottom right) > **OK**. Without it, a Windows 11 PC with Smart App Control turned on refuses to run anything from the ZIP, and other PCs show a warning.
 3. Extract the ZIP anywhere - it's only the download - and double-click **`Game Scheduler.cmd`** inside the extracted folder.
 4. A setup window opens: choose where to install (the default is `C:\Apps\Game_Scheduler` - anywhere is fine **except your Documents folder or anything OneDrive syncs**), tick whether you want a desktop shortcut, and click **Install and start**.
@@ -13,14 +13,14 @@ Nothing is downloaded and nothing is installed on the computer - the app and its
 
 ### What's new
 
-- **Game results - optional.** Settings > Game defaults > *Record game results* sets the default for a new tick on the start-of-day panel, *Record game results tonight*, so Club Champs can record and social Friday can skip it. On a recording night each court on the Rounds page gets a **Won** button under each side once the game is on court or played; tap again to clear. "2 of 5 results entered" is a reminder, never a gate. Threes (no sides) is left out. Nothing changes a grade and auto-generate ignores results - it is evidence for the club's own grading decisions.
-- **Scores, any number of games per court.** Under the Won buttons, a pair of score boxes per game (G1, G2, ...) with a spare pair for the next - a timed round often fits more than one game. The winner follows from the scores (more games won, then more points); if that's level the Won buttons decide, and they carry the typed scores with them. Scores are not capped at 21.
-- **History shows it.** A recorded night's round shows the same buttons and boxes (fill it in the next day if you like), the winning pair in bold, and each player's page gets Won / Lost totals and a Result column - `W 21-18, 19-21, 21-15` with their own side first.
-- **Committee report.** History > *Committee report*: pick a date range and get sessions held, attendances, different players, average per session, the membership split, how many players were new (first ever session in the range) and how many of them came back - 1 session only, 2-3, 4-5, 6 or more - plus one row per player with sessions attended, matches played, won and lost. Counts only, no dates per player. **Download CSV** for the committee pack.
-- **Try another mix.** After *Auto-generate round* on the Rounds page, a *Try another mix* button re-rolls the courts auto-generate just filled with a fresh shuffle. The fairness rules - who sat out, who has had the fewest games, grades, avoid pairs - are untouched; only the tiebreaks and court order change. (Running auto-generate twice used to give the identical lineup.)
-- The *Round played* panel now stays on the round you're looking at across refreshes, so last round's scores can be typed in while the next round is on court.
+- **Plays every 2nd game.** For players who want a rest after each game - older players pacing themselves. Tick it in the check-in box and, each time a round they are in goes on court, they sit out the next round: they can't be put on a court for it, auto-generate leaves them out of it, and they are back in the pool the round after. A blue *every 2nd game* tag shows beside their name on Check-in and Rounds. Right-click them on either page to switch it on or off part-way through the night. It is remembered the same way the payment category is: next week's check-in starts from whatever they did last time.
+- **Sport / scoring.** Settings > Game defaults > *Sport / scoring* says what the club plays - badminton (to 21), squash (11 or 9), racquetball (15), table tennis (11), pickleball (11), tennis (sets to 6), or points only. It names the score rows (G1 or S1) and fills in the winner's score when just the loser's is typed (18 becomes 21-18, 7 becomes 11-7). Session templates follow it unless one plays something else; a one-off night starts from it too. Who wins is unchanged: more games or sets won, then more points, then the Won button.
+- **Game results are now a switch.** Settings > Game defaults > *Record game results and scores* turns the whole feature on or off, the same way payment tracking does. Off, nothing about results appears anywhere. On, the start-of-day panel has a *Record game results tonight* tick (ticked by default - untick it for a night you can't be bothered), the templates get their Scoring choice, and the Rounds page gets the Won buttons and score boxes.
+- **Winner only.** A scoring choice with no score boxes at all - just the Won buttons - for a club that wants a win-loss record without typing scores.
+- **Threes records results too.** Three in a box (squash style) gets a score row per pair of players with a spare for the next game between them, and a Won button per player. The box winner follows from most games won, then points difference. History shows the box winner in bold and each player's page reads `W v Bob 11-7, v Cy 9-11`. Win-loss records count boxes like matches.
 
 ### Notes
 
+- Upgrading rebuilds the game results table once on first start (existing results are kept) so threes results fit.
 - Results entry is on the main computer; a device signed in with the check-in PIN sees the start-of-day tick but does not record results.
 - Your roster and history live in one local file (`game_scheduler.db`) - not included in this release, but backed up automatically to `Documents\GameScheduler\backups` every time the app opens.
