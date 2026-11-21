@@ -14,7 +14,7 @@
     "autogen:test": "node lib/autoGenerate.test.js",
     "report:test": "node lib/sessionReport.test.js",
     "roundbuilder:test": "node public/roundBuilder.test.js",
-    "launcher:test": "node lib/shellLink.test.js && node lib/installDir.test.js",
+    "launcher:test": "node lib/shellLink.test.js && node lib/installDir.test.js && node lib/launchLogs.test.js && node lib/appWindow.test.js",
     "access:test": "node lib/access.test.js",
     "html:test": "node lib/htmlStructure.test.js",
     "tally:test": "node lib/tallyReport.test.js",

@@ -15,9 +15,13 @@
 // folder remembers where the app went ("installed-to=<path>" in its
 // marker), so running its .cmd again just opens the installed copy.
 //
-// EVERY LATER RUN: starts the server (server.js, unchanged), opens the app
-// in a chromeless Edge/Chrome app window, and stops the server when that
-// window closes.
+// EVERY LATER RUN: opens the app's window straight away on a "Starting"
+// page (launcher/starting.html, served from here), starts the server
+// (server.js, unchanged), moves the window on to the app once the server
+// answers, and stops the server when the window closes. A start that fails
+// is reported in that same window, with what the server said and a Try
+// again button; a second double-click while one start is under way (or
+// showing its failure) is handed to the launcher that is already there.
 //
 // Runs itself twice: started plainly it re-launches itself detached with
 // `--background` and exits, so the (headless) console that started it can
@@ -27,13 +31,24 @@ const fs = require('fs');
 const http = require('http');
 const net = require('net');
 const path = require('path');
-const { findBrowser, openAppWindow } = require('./lib/appWindow');
+const { findBrowser, openAppWindow, whenAppClosed } = require('./lib/appWindow');
 const { defaultInstallDir, installDirProblem, desktopFolder, isInside } = require('./lib/installDir');
 const { writeShellLink } = require('./lib/shellLink');
+const { tailOf, keepPrevious } = require('./lib/launchLogs');
 
 const BASE_DIR = __dirname;
 const LOG_DIR = path.join(BASE_DIR, 'logs');
 const PID_FILE = path.join(LOG_DIR, 'server.pid');
+// Who is starting (or showing) the app right now: this launcher's pid and
+// the address of its starting page. A second launch reads it.
+const LAUNCH_FILE = path.join(LOG_DIR, 'launcher.json');
+const SERVER_OUT_LOG = path.join(LOG_DIR, 'server.out.log');
+const SERVER_ERR_LOG = path.join(LOG_DIR, 'server.err.log');
+// How long the server gets to answer. It is up in a second or two on a
+// warm computer, but one that has only just been switched on (cold disk,
+// antivirus reading every file for the first time) has been seen to need
+// far longer than the 15 seconds this used to allow.
+const START_TIMEOUT_MS = Number(process.env.GAMESCHEDULER_START_TIMEOUT_MS) || 60000;
 const MARKER = path.join(BASE_DIR, '.setup-complete');
 const SETUP_PROFILE = path.join(BASE_DIR, '.edge-setup-profile');
 const PORT = 4000;
@@ -128,7 +143,7 @@ async function showMessageWindow(title, message, { ok = false, waitForClose = tr
     }
     const { server, url } = await serveOnce(messagePage(title, message, ok));
     const win = openAppWindow(browser, url, { width: 620, height: 420, profileDir: SETUP_PROFILE });
-    if (waitForClose) await new Promise((resolve) => { win.on('exit', resolve); setTimeout(resolve, 10 * 60 * 1000); });
+    if (waitForClose) await Promise.race([whenAppClosed(win, { profileDir: SETUP_PROFILE }), sleep(10 * 60 * 1000)]);
     server.close();
 }
 
@@ -256,7 +271,7 @@ async function runInstall(dirText, wantShortcut) {
 
         step(await portOpen(PORT) ? 'Game Scheduler is already running - opening it' : 'Starting Game Scheduler');
         launchDetached(appDir);
-        if (!(await waitForPort(PORT, 45000))) return failSetup(`The server did not start in time.\n\nSee logs\\server.err.log in ${appDir} for details.`);
+        if (!(await waitForPort(PORT, START_TIMEOUT_MS + 30000))) return failSetup(`The app did not start in time.\n\nSee logs\\run.log in ${appDir} for details.`);
         done();
         setup.phase = 'done';
         setup.message = inPlace
@@ -313,11 +328,17 @@ async function runSetup() {
     }
 
     let browserWin = null;
+    let setupWindowGone = null; // resolves when the setup window's browser has gone
     const finish = async (code) => {
-        if (browserWin && browserWin.exitCode === null) {
-            try { browserWin.kill(); } catch (e) { /* already gone */ }
+        if (browserWin) {
+            // The page closes its own window once setup is done or
+            // cancelled (launcher/setup.html). Killing the process we
+            // spawned is only a backstop: the browser may have handed the
+            // window to another process of itself (lib/appWindow.js).
+            await Promise.race([setupWindowGone, sleep(4000)]);
+            if (browserWin.exitCode === null) { try { browserWin.kill(); } catch (e) { /* already gone */ } }
             // give the browser a moment to let go of its profile files
-            for (let i = 0; i < 20 && browserWin.exitCode === null; i++) await sleep(150);
+            await Promise.race([setupWindowGone, sleep(3000)]);
             await sleep(500);
         }
         try { fs.rmSync(SETUP_PROFILE, { recursive: true, force: true }); } catch (e) { /* best effort */ }
@@ -328,7 +349,8 @@ async function runSetup() {
     const browser = findBrowser();
     if (browser) {
         browserWin = openAppWindow(browser, url, { width: 640, height: 760, profileDir: SETUP_PROFILE });
-        browserWin.on('exit', () => {
+        setupWindowGone = whenAppClosed(browserWin, { profileDir: SETUP_PROFILE });
+        setupWindowGone.then(() => {
             if (setup.phase === 'welcome') { log('Setup window closed before installing.'); finish(0); }
         });
     } else {
@@ -350,80 +372,262 @@ async function ensureAppFiles() {
     }
 }
 
-async function ensureDatabase() {
-    // db/init.js is idempotent and additive-only - always safe to run.
-    const result = spawnSync(process.execPath, [path.join('db', 'init.js')], { cwd: BASE_DIR, encoding: 'utf8', windowsHide: true });
-    if (result.status !== 0) {
-        log(`db init failed: ${result.stdout}\n${result.stderr}`);
-        await fatal(`Could not set up the database:\n\n${(result.stderr || '').slice(0, 500)}`);
-    }
+// Runs a script with this Node.js without blocking - the starting page has
+// to keep answering while it runs.
+function runNode(args) {
+    return new Promise((resolve) => {
+        let out = '';
+        let err = '';
+        const child = spawn(process.execPath, args, { cwd: BASE_DIR, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+        child.stdout.on('data', (d) => { out += d; });
+        child.stderr.on('data', (d) => { err += d; });
+        child.once('error', (e) => resolve({ code: -1, out, err: `${err}${e.message}` }));
+        child.once('close', (code) => resolve({ code, out, err }));
+    });
 }
 
-async function startServer() {
+const lastLines = (text) => String(text || '').split(/\r?\n/).filter((l) => l.trim()).slice(-12).join('\n').slice(-1500);
+
+// What the starting page shows (GET /status on the status server below).
+const start = { phase: 'starting', step: '', message: '', detail: '', startedAt: Date.now() };
+let serverChild = null; // the server this launcher started (null: none - or it is someone else's)
+let stoppingServer = false; // it is being stopped on purpose
+let attempting = false;
+let appBrowser = null;
+
+// Sets up the database and starts server.js, waiting for it to answer on
+// the port. Resolves { ok: true } or { ok: false, message, detail }; it
+// shows nothing itself.
+async function bringUpServer() {
     if (await portOpen(PORT)) {
         log(`Server already running on port ${PORT} - reusing it.`);
-        return null;
+        return { ok: true };
     }
+    start.step = 'Getting the club\u2019s data ready\u2026';
+    // db/init.js is idempotent and additive-only - always safe to run.
+    const init = await runNode([path.join('db', 'init.js')]);
+    if (init.code !== 0) {
+        return { ok: false, message: 'The database could not be set up.', detail: lastLines(init.err || init.out) };
+    }
+
+    start.step = 'Starting the app\u2026';
     log('Starting server...');
-    const out = fs.openSync(path.join(LOG_DIR, 'server.out.log'), 'w');
-    const err = fs.openSync(path.join(LOG_DIR, 'server.err.log'), 'w');
-    const server = spawn(process.execPath, ['server.js'], {
+    // The launch before this one may be the one that failed: keep its logs
+    // (server.err.prev.log) instead of wiping them with this launch's.
+    keepPrevious(SERVER_OUT_LOG);
+    keepPrevious(SERVER_ERR_LOG);
+    const out = fs.openSync(SERVER_OUT_LOG, 'w');
+    const err = fs.openSync(SERVER_ERR_LOG, 'w');
+    const child = spawn(process.execPath, ['server.js'], {
         cwd: BASE_DIR,
         stdio: ['ignore', out, err],
         windowsHide: true,
         env: { ...process.env, GAME_SCHEDULER_APP_WINDOW: '1' },
     });
-    fs.writeFileSync(PID_FILE, String(server.pid));
-    if (await waitForPort(PORT, 15000)) {
-        log(`Server ready on port ${PORT} (pid ${server.pid}).`);
-        return server;
+    fs.closeSync(out);
+    fs.closeSync(err);
+    serverChild = child; // from this moment, closing the window stops it
+    let gone = null;
+    child.once('error', (e) => { gone = gone || { error: e.message }; });
+    child.once('exit', (code) => { gone = gone || { code }; });
+    if (child.pid) fs.writeFileSync(PID_FILE, String(child.pid));
+
+    const deadline = Date.now() + START_TIMEOUT_MS;
+    while (!gone && Date.now() < deadline) {
+        if (await portOpen(PORT)) {
+            child.once('exit', (code) => serverStopped(child, code));
+            log(`Server ready on port ${PORT} (pid ${child.pid}) after ${((Date.now() - start.startedAt) / 1000).toFixed(1)}s.`);
+            return { ok: true };
+        }
+        await sleep(250);
     }
-    server.kill();
+
+    // It never answered. A server that died says why in its error log; one
+    // that is merely slow gets stopped so the next try starts clean.
+    serverChild = null;
+    if (!gone) { stoppingServer = true; child.kill(); stoppingServer = false; }
     try { fs.unlinkSync(PID_FILE); } catch (e) { /* already gone */ }
-    await fatal('The server did not start in time.\n\nSee logs\\server.err.log for details.');
-    return null;
+    const detail = tailOf(SERVER_ERR_LOG) || tailOf(SERVER_OUT_LOG);
+    if (gone && gone.error) return { ok: false, message: `Node.js could not be started: ${gone.error}`, detail };
+    if (gone) return { ok: false, message: `The app stopped while it was starting (exit code ${gone.code}).`, detail };
+    return {
+        ok: false,
+        message: `The app did not start within ${Math.round(START_TIMEOUT_MS / 1000)} seconds.\n\nThis can happen on a computer that has only just been switched on. Give it a moment, then click Try again.`,
+        detail,
+    };
 }
 
-function stopServer(server) {
-    if (!server) {
-        log('Server was reused from another window - leaving it running.');
+// The server went away while the app window was open (Stop.bat, or it
+// failed). Nothing can be shown in the window - it is on the app's own
+// page by now - so record why; starting Game Scheduler again brings it back
+// (the new launch finds this one and asks it to try again).
+async function serverStopped(child, code) {
+    if (stoppingServer || serverChild !== child) return;
+    serverChild = null;
+    try { fs.unlinkSync(PID_FILE); } catch (e) { /* already gone */ }
+    if (await portOpen(PORT)) { log('This window\'s server has stopped, but another copy is answering - leaving it be.'); return; }
+    start.phase = 'stopped';
+    const detail = tailOf(SERVER_ERR_LOG);
+    log(`Server stopped while the app window was open (exit code ${code}) - Stop.bat, or it failed.${detail ? `\n--- what the app reported ---\n${detail}\n---` : ''}`);
+}
+
+// One go at getting the server up, reported through `start`. Resolves true
+// when the app is ready.
+async function attemptStart() {
+    if (attempting) return false;
+    attempting = true;
+    const windowIsOnTheApp = start.phase === 'stopped';
+    Object.assign(start, { phase: 'starting', step: '', message: '', detail: '', startedAt: Date.now() });
+    let result;
+    try { result = await bringUpServer(); } catch (e) { result = { ok: false, message: `Unexpected error: ${e.message}`, detail: '' }; }
+    attempting = false;
+    if (result.ok) {
+        start.phase = 'ready';
+        if (windowIsOnTheApp && appBrowser) {
+            // The old window can't be moved from here; this opens the app
+            // afresh in the same browser (which is still running).
+            log('Server is back - opening the app again.');
+            openAppWindow(appBrowser, APP_URL, { width: 1280, height: 800 });
+        }
+        return true;
+    }
+    log(`FATAL: ${result.message}${result.detail ? `\n--- what the app reported ---\n${result.detail}\n---` : ''}`);
+    Object.assign(start, { phase: 'failed', message: result.message, detail: result.detail || '' });
+    return false;
+}
+
+function stopServer() {
+    if (!serverChild) {
+        log('No server of this window\'s to stop (it was already running from another window, or had stopped).');
         return;
     }
-    if (server.exitCode !== null) {
+    if (serverChild.exitCode !== null) {
         log('Server already stopped (e.g. via Stop.bat) - nothing to do.');
         return;
     }
-    log(`Stopping server (pid ${server.pid})...`);
-    server.kill();
+    log(`Stopping server (pid ${serverChild.pid})...`);
+    stoppingServer = true;
+    serverChild.kill();
     try { fs.unlinkSync(PID_FILE); } catch (e) { /* already gone */ }
     log('Server stopped.');
+}
+
+// The starting page and what it polls. Stays up for as long as this
+// launcher does, so a later launch can find it (LAUNCH_FILE).
+function startStatusServer() {
+    const page = fs.readFileSync(path.join(BASE_DIR, 'launcher', 'starting.html'));
+    return new Promise((resolve) => {
+        const server = http.createServer(async (req, res) => {
+            const json = (status, obj) => { res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(obj)); };
+            if (req.method === 'GET' && req.url === '/') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); return res.end(page); }
+            if (req.method === 'GET' && req.url === '/status') {
+                return json(200, { app: 'game-scheduler-launcher', phase: start.phase, step: start.step, message: start.message, detail: start.detail, appUrl: APP_URL, elapsedMs: Date.now() - start.startedAt });
+            }
+            if (req.method === 'POST' && req.url === '/retry') {
+                req.resume();
+                // The Try again button, or another launch finding this one.
+                if (!attempting && start.phase !== 'starting' && !(await portOpen(PORT))) {
+                    log('Trying again.');
+                    attemptStart();
+                }
+                return json(200, { ok: true });
+            }
+            res.writeHead(404); return res.end();
+        });
+        server.listen(0, '127.0.0.1', () => resolve({ server, url: `http://127.0.0.1:${server.address().port}/` }));
+    });
+}
+
+// A small JSON request to another launcher's status server; null if nobody
+// answers (in time).
+function requestJson(method, url, timeoutMs = 1500) {
+    return new Promise((resolve) => {
+        const req = http.request(url, { method, timeout: timeoutMs }, (res) => {
+            let body = '';
+            res.on('data', (c) => { body += c; if (body.length > 20000) req.destroy(); });
+            res.on('end', () => { try { resolve(JSON.parse(body)); } catch (e) { resolve(null); } });
+        });
+        req.on('timeout', () => { req.destroy(); resolve(null); });
+        req.on('error', () => resolve(null));
+        req.end();
+    });
+}
+
+// Another launcher of this copy of the app that is alive right now - the
+// one whose window the user is (or should be) looking at.
+async function otherLauncher() {
+    let info;
+    try { info = JSON.parse(fs.readFileSync(LAUNCH_FILE, 'utf8')); } catch (e) { return null; }
+    if (!info || info.pid === process.pid || !/^http:\/\/127\.0\.0\.1:\d+\/$/.test(info.url || '')) return null;
+    const status = await requestJson('GET', `${info.url}status`);
+    if (!status || status.app !== 'game-scheduler-launcher') return null; // a file left by a launcher that has gone
+    return { pid: info.pid, url: info.url, phase: status.phase };
+}
+
+// No Edge or Chrome - fall back to whatever the default browser is. We
+// can't tell when that window closes, so the server stays up until
+// Stop.bat; say so.
+async function openInDefaultBrowser() {
+    log('No Edge/Chrome found - opening in the default browser.');
+    spawn('cmd', ['/c', 'start', '', APP_URL], { windowsHide: true, stdio: 'ignore' }).unref();
+    await showMessageWindow('Game Scheduler', 'Opened in your default browser (Microsoft Edge or Google Chrome wasn\'t found, so the app can\'t open in its own window).\n\nWhen you\'re finished for the night, run Stop.bat to stop the server.', { ok: true });
 }
 
 async function runApp() {
     log('--- Game Scheduler launched ---');
     await ensureAppFiles();
     ensureFolderShortcut(BASE_DIR);
-    await ensureDatabase();
-    const server = await startServer();
-
     const browser = findBrowser();
-    if (!browser) {
-        // No Edge or Chrome - fall back to whatever the default browser is.
-        // We can't tell when that window closes, so the server stays up
-        // until Stop.bat; say so.
-        log('No Edge/Chrome found - opening in the default browser.');
-        spawn('cmd', ['/c', 'start', '', APP_URL], { windowsHide: true, stdio: 'ignore' }).unref();
-        await showMessageWindow('Game Scheduler', 'Opened in your default browser (Microsoft Edge or Google Chrome wasn\'t found, so the app can\'t open in its own window).\n\nWhen you\'re finished for the night, run Stop.bat to stop the server.', { ok: true });
-        return;
+    appBrowser = browser;
+
+    // Already running - another window of it is open. Nothing to set up
+    // and nothing to start (and the database file is the running server's
+    // to write, not ours): just one more window on it.
+    if (await portOpen(PORT)) {
+        log(`Server already running on port ${PORT} - reusing it.`);
+        if (!browser) return openInDefaultBrowser();
+        log(`Opening another app window with ${browser} - the launcher that started the server looks after it.`);
+        openAppWindow(browser, APP_URL, { width: 1280, height: 800 }).unref();
+        return undefined;
     }
 
+    // A second double-click while the first is still starting, or while its
+    // window is showing that the start failed: that launcher has the
+    // window, so it does the work.
+    const other = await otherLauncher();
+    if (other) {
+        if (other.phase === 'starting') {
+            log(`Already starting (launcher pid ${other.pid}) - leaving it to that one.`);
+        } else {
+            log(`A Game Scheduler window is already open (${other.phase}, launcher pid ${other.pid}) - asking it to try again.`);
+            await requestJson('POST', `${other.url}retry`);
+        }
+        return undefined;
+    }
+
+    if (!browser) {
+        if (!(await attemptStart())) {
+            await showMessageWindow('Game Scheduler could not start', `${start.message}${start.detail ? `\n\nWhat the app reported:\n${start.detail}` : ''}`);
+            process.exit(1);
+        }
+        return openInDefaultBrowser();
+    }
+
+    // The window first, on the starting page, so there is something to see
+    // from the moment of the double-click; then the server.
+    const status = await startStatusServer();
+    fs.writeFileSync(LAUNCH_FILE, JSON.stringify({ pid: process.pid, url: status.url, at: timestamp() }));
     log(`Opening app window with ${browser}`);
-    const win = openAppWindow(browser, APP_URL, { width: 1280, height: 800 });
-    win.on('exit', () => {
-        log('App window closed.');
-        stopServer(server);
-        process.exit(0);
+    const win = openAppWindow(browser, status.url, { width: 1280, height: 800 });
+    whenAppClosed(win).then((how) => {
+        if (how === 'never-opened') log('The browser never opened the app window.');
+        log(start.phase === 'ready' ? 'App window closed.' : `App window closed (${start.phase}).`);
+        stopServer();
+        try { fs.unlinkSync(LAUNCH_FILE); } catch (e) { /* already gone */ }
+        process.exit(start.phase === 'failed' ? 1 : 0);
     });
+    await attemptStart();
+    return undefined;
 }
 
 // --- Entry --------------------------------------------------------------------

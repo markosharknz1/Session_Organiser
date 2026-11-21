@@ -82,7 +82,7 @@
   api('/api/setup').then((s) => { $('dir').value = s.defaultDir || ''; $('dir').focus(); });
   api('/api/status').then((st) => { if (st.phase !== 'welcome') { $('welcome').hidden = true; $('progress').hidden = false; render(st); if (st.phase === 'running') poll(); } });
 
-  $('cancel').addEventListener('click', () => { api('/api/cancel', {}); document.body.innerHTML = '<div class="page"><h1>Setup cancelled</h1><p>You can close this window.</p></div>'; });
+  $('cancel').addEventListener('click', () => { api('/api/cancel', {}); document.body.innerHTML = '<div class="page"><h1>Setup cancelled</h1><p>You can close this window.</p></div>'; setTimeout(() => window.close(), 1200); });
 
   $('go').addEventListener('click', async () => {
     $('go').disabled = true; $('dir-error').textContent = '';
@@ -100,6 +100,8 @@
     if (st.phase === 'done') {
       $('progress-title').textContent = 'Setup complete'; $('progress-title').className = 'ok';
       $('bar').hidden = true; $('hint').hidden = false;
+      // The app is opening in its own window; this one has done its job.
+      if (!render.closing) { render.closing = true; setTimeout(() => window.close(), 6000); }
     } else if (st.phase === 'failed') {
       $('progress-title').textContent = 'Setup could not finish'; $('progress-title').className = 'bad';
       $('bar').hidden = true; $('close-row').hidden = false;

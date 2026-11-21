@@ -31,7 +31,7 @@ jobs:
           node --check launcher.js
           node --check lib/appWindow.js
           node -e "require('./routes/launcher')"
-          test -f "Game Scheduler.cmd" && test -f launcher/setup.html
+          test -f "Game Scheduler.cmd" && test -f launcher/setup.html && test -f launcher/starting.html
           # The download's only scripts are two plain batch files (start and
           # stop). No PowerShell, no Windows Script Host - see SECURITY.md.
           # Checked on what actually ships (git archive honours export-ignore).

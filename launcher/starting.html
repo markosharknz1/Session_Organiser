@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Game Scheduler</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #fff; color: #1f2937; font: 15px/1.5 "Segoe UI", system-ui, sans-serif; }
+  .page { max-width: 600px; margin: 0 auto; padding: 18vh 32px 32px; }
+  h1 { font-size: 24px; margin: 0 0 10px; }
+  h1.bad { color: #b91c1c; }
+  p { margin: 0 0 12px; }
+  .bar { height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden; margin: 22px 0 14px; }
+  .bar i { display: block; width: 35%; height: 100%; background: #2563eb; border-radius: 3px; animation: slide 1.4s ease-in-out infinite; }
+  @keyframes slide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+  .muted { color: #4b5563; }
+  .message { white-space: pre-wrap; }
+  .detail-label { font-size: 13px; font-weight: 600; color: #4b5563; margin: 18px 0 4px; }
+  pre { margin: 0; padding: 10px 12px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; font: 12.5px/1.45 Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; }
+  .buttons { display: flex; gap: 10px; margin-top: 22px; }
+  button { font: inherit; padding: 8px 18px; border-radius: 6px; border: 1px solid #9ca3af; background: #f9fafb; cursor: pointer; }
+  button.primary { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .small { font-size: 13px; color: #6b7280; margin-top: 22px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<!-- Shown in the app's own window from the moment it is started until the
+     server is up (launcher.js serves this and /status); then the window
+     moves on to the app itself. A failed start is reported here too. -->
+<div class="page">
+  <div id="starting">
+    <h1>Starting Game Scheduler</h1>
+    <p class="muted" id="starting-line">Getting the club's data ready&hellip;</p>
+    <div class="bar"><i></i></div>
+    <p class="muted" id="slow-line" hidden>Still starting. A computer that has only just been switched on can take up to a minute &ndash; there is no need to start it again.</p>
+  </div>
+
+  <div id="failed" hidden>
+    <h1 class="bad">Game Scheduler could not start</h1>
+    <p class="message" id="failed-message"></p>
+    <div id="failed-detail-box" hidden>
+      <p class="detail-label">What the app reported</p>
+      <pre id="failed-detail"></pre>
+    </div>
+    <div class="buttons">
+      <button class="primary" id="retry">Try again</button>
+    </div>
+    <p class="small">If it keeps happening, the full record is in the logs folder inside the app's folder (run.log). The club's data is copied to Documents &gt; GameScheduler &gt; backups every time the app opens.</p>
+  </div>
+
+  <div id="gone" hidden>
+    <h1 class="bad">Game Scheduler has stopped</h1>
+    <p>Close this window and start Game Scheduler again.</p>
+  </div>
+</div>
+<script>
+(function () {
+    var $ = function (id) { return document.getElementById(id); };
+    var misses = 0;
+    var leaving = false;
+
+    function show(which) {
+        ['starting', 'failed', 'gone'].forEach(function (id) { $(id).hidden = id !== which; });
+    }
+
+    function render(s) {
+        if (s.phase === 'ready') {
+            if (!leaving) { leaving = true; location.replace(s.appUrl); }
+            return;
+        }
+        if (s.phase === 'stopped') { show('gone'); return; }
+        if (s.phase === 'failed') {
+            $('failed-message').textContent = s.message || 'Something went wrong while starting.';
+            $('failed-detail').textContent = s.detail || '';
+            $('failed-detail-box').hidden = !s.detail;
+            $('retry').disabled = false;
+            show('failed');
+            return;
+        }
+        $('starting-line').textContent = s.step || 'Getting the club’s data ready…';
+        $('slow-line').hidden = (s.elapsedMs || 0) < 12000;
+        show('starting');
+    }
+
+    function poll() {
+        if (leaving) return;
+        fetch('/status', { cache: 'no-store' })
+            .then(function (r) { return r.json(); })
+            .then(function (s) { misses = 0; render(s); })
+            .catch(function () { misses++; if (misses >= 8) show('gone'); })
+            .then(function () { setTimeout(poll, 400); });
+    }
+
+    $('retry').addEventListener('click', function () {
+        $('retry').disabled = true;
+        fetch('/retry', { method: 'POST' }).catch(function () { /* the next poll says what happened */ });
+    });
+
+    poll();
+})();
+</script>
+</body>
+</html>
