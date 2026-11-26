@@ -50,6 +50,7 @@ jobs:
           npm run leaving:test
           npm run results:test
           npm run committee:test
+          npm run summary:test
           node --check launcher.js
 
       - name: Fetch the official Node.js runtime for Windows

@@ -294,6 +294,66 @@ function renderCommitteeReport(r) {
     });
 }
 
+// --- Lapsed players ---
+// Regulars who have stopped coming (lib/lapsedPlayers.js), in first-name
+// order. Click a row for that player's history.
+function lapsedQuery() {
+    const n = (sel) => encodeURIComponent($(sel).value.trim());
+    return `?weeks=${n('#lapsed-weeks')}&min=${n('#lapsed-min')}&months=${n('#lapsed-months')}`;
+}
+
+async function runLapsedReport() {
+    const out = $('#lapsed-output');
+    out.innerHTML = '<p class="muted">Working...</p>';
+    try {
+        renderLapsedReport(await api(`/api/history/lapsed${lapsedQuery()}`));
+        $('#lapsed-csv').disabled = false;
+    } catch (err) {
+        out.innerHTML = `<p class="error-banner">${esc(err.message)}</p>`;
+    }
+}
+
+function renderLapsedReport(r) {
+    // the server tidies what was typed (blank, or out of range) - show what it used
+    $('#lapsed-weeks').value = r.weeks;
+    $('#lapsed-min').value = r.min_sessions;
+    $('#lapsed-months').value = r.within_months;
+    const within = r.within_months ? `, and were last in within the past ${r.within_months} month${r.within_months === 1 ? '' : 's'}` : '';
+    const statusLabel = { active: 'Active', lapsed: 'Lapsed', guest: 'Guest' };
+    $('#lapsed-output').innerHTML = `
+        <p class="muted" style="margin:12px 0 6px;"><strong>${r.players.length}</strong> player${r.players.length === 1 ? '' : 's'} came to at least ${r.min_sessions} session${r.min_sessions === 1 ? '' : 's'}, have not been in for ${r.weeks} week${r.weeks === 1 ? '' : 's'} or more${within}. As of ${esc(formatDate(r.as_of))}.</p>
+        <div class="roster-table-wrap">
+            <table class="history-table" id="lapsed-players">
+                <thead><tr><th>Player</th><th class="num">Grade</th><th>Membership</th><th>Last came</th><th class="num">Weeks away</th><th class="num">Sessions ever</th><th class="num" title="Sessions in the twelve weeks up to their last one - how regular they were when they stopped">In their last 12 weeks</th><th>Phone</th><th>Email</th></tr></thead>
+                <tbody>
+                    ${r.players.map((p) => `
+                        <tr data-player-id="${p.id}">
+                            <td>${esc(p.first_name)} ${esc(p.last_name)}</td>
+                            <td class="num">${skillTag(p.skill_level)}</td>
+                            <td class="muted">${esc(statusLabel[p.membership_status] || p.membership_status)}</td>
+                            <td style="white-space:nowrap;">${esc(formatDate(p.last_came))}</td>
+                            <td class="num">${p.weeks_away}</td>
+                            <td class="num">${p.sessions}</td>
+                            <td class="num">${p.sessions_last_12_weeks}</td>
+                            <td>${esc(p.phone || '')}</td>
+                            <td>${esc(p.email || '')}</td>
+                        </tr>`).join('') || '<tr><td colspan="9" class="muted">Nobody fits - everyone who was a regular has been in lately.</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+    `;
+    $('#lapsed-players').querySelectorAll('tr[data-player-id]').forEach((tr) => {
+        tr.addEventListener('click', () => openPlayer(Number(tr.dataset.playerId)));
+    });
+}
+
+$('#lapsed-run').addEventListener('click', runLapsedReport);
+$('#lapsed-csv').addEventListener('click', () => { window.location.href = `/api/history/lapsed.csv${lapsedQuery()}`; });
+['#lapsed-weeks', '#lapsed-min', '#lapsed-months'].forEach((sel) => {
+    $(sel).addEventListener('change', () => { $('#lapsed-csv').disabled = true; });
+    $(sel).addEventListener('keydown', (e) => { if (e.key === 'Enter') runLapsedReport(); });
+});
+
 $('#committee-run').addEventListener('click', runCommitteeReport);
 $('#committee-csv').addEventListener('click', () => { window.location.href = `/api/history/committee.csv${committeeQuery()}`; });
 ['#committee-from', '#committee-to'].forEach((sel) => $(sel).addEventListener('change', () => { $('#committee-csv').disabled = true; }));
@@ -660,6 +720,8 @@ function openTallyModal(kind, sessionId) {
 function closeTallyModal() { $('#tally-modal-backdrop').style.display = 'none'; }
 
 let openedSessionId = null;
+// The same end-of-night summary the Finish session button shows, for any past night.
+$('#summary-open-session').addEventListener('click', () => { if (openedSessionId) showSessionSummaryModal(openedSessionId, 'Summary'); });
 $('#tally-open').addEventListener('click', () => openTallyModal('session', null));
 $('#tally-open-session').addEventListener('click', () => openTallyModal('session', openedSessionId));
 $('#tally-close').addEventListener('click', closeTallyModal);

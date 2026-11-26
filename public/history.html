@@ -102,6 +102,19 @@
             <div id="committee-output"></div>
         </div>
 
+        <div class="panel" id="lapsed-panel">
+            <h2>Lapsed players</h2>
+            <p class="muted">Regulars who have stopped coming - who they are, when they were last in and how to reach them. Worked out from the sessions people actually came to, as of today; it has nothing to do with the membership status on a player's record.</p>
+            <div class="filter-bar">
+                <div class="field"><label for="lapsed-weeks">Not seen for (weeks)</label><input type="number" id="lapsed-weeks" min="1" max="520" step="1" value="4" style="width:7em;"></div>
+                <div class="field"><label for="lapsed-min">Came at least (sessions)</label><input type="number" id="lapsed-min" min="1" max="1000" step="1" value="3" style="width:7em;"></div>
+                <div class="field"><label for="lapsed-months">Last came within (months)</label><input type="number" id="lapsed-months" min="0" max="600" step="1" value="12" style="width:7em;"></div>
+                <div class="field"><label>&nbsp;</label><button class="primary" id="lapsed-run">Show list</button></div>
+                <div class="field"><label>&nbsp;</label><button id="lapsed-csv" disabled>Download CSV</button></div>
+            </div>
+            <div id="lapsed-output"></div>
+        </div>
+
         <div class="panel">
             <h2>All sessions</h2>
             <table class="history-table" id="sessions-table">
@@ -138,6 +151,7 @@
             <p id="session-note" class="session-note" style="display:none;"></p>
             <div id="session-payment-summary"><p class="muted">Loading...</p></div>
             <div class="filter-bar" style="margin-top:12px;">
+                <button class="primary" id="summary-open-session">End-of-night summary</button>
                 <button id="tally-open-session">Email this session's tally...</button>
             </div>
         </div>
@@ -165,6 +179,20 @@
         </div>
     </section>
 </main>
+
+<div id="session-summary-modal-backdrop" class="modal-backdrop" style="display:none;">
+    <div class="modal wide">
+        <h3 id="session-summary-title">Summary</h3>
+        <div id="session-summary-body"></div>
+        <div class="row" style="justify-content: space-between; align-items: center;">
+            <span class="muted" id="session-summary-send-result"></span>
+            <div class="row">
+                <button id="session-summary-close">Close</button>
+                <button class="primary" id="session-summary-send">Send summary</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div id="tally-modal-backdrop" class="modal-backdrop" style="display:none;">
     <div class="modal modal-wide">
@@ -207,6 +235,8 @@
 <script src="/tonightSummary.js"></script>
 <script src="/scoring.js"></script>
 <script src="/scores.js"></script>
+<script src="/nightSummaryText.js"></script>
+<script src="/sessionSummaryModal.js"></script>
 <script src="/history.js"></script>
 <script src="/pwa.js"></script>
 </body>

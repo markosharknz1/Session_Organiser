@@ -59,7 +59,13 @@ CREATE TABLE IF NOT EXISTS session_templates (
     default_max_capacity INTEGER,
     -- Null falls back to club_settings.default_game_minutes/default_break_minutes.
     default_game_minutes INTEGER,
-    default_break_minutes INTEGER
+    default_break_minutes INTEGER,
+    -- Auto-generate's memory, in rounds (0 = that rule is off): how many
+    -- rounds before two people can be partnered again, and how many before
+    -- they can be put on the same court again (with or against each other).
+    -- Copied to the session when a night is started from this template.
+    default_recent_partner_rounds INTEGER NOT NULL DEFAULT 4,
+    default_recent_player_rounds INTEGER NOT NULL DEFAULT 4
 );
 
 CREATE TABLE IF NOT EXISTS session_template_courts (
@@ -101,7 +107,10 @@ CREATE TABLE IF NOT EXISTS sessions (
     record_results INTEGER NOT NULL DEFAULT 0 CHECK (record_results IN (0,1)),
     paused_remaining_ms INTEGER,
     phase_paused_at TEXT,
-    paused_from_phase TEXT CHECK (paused_from_phase IN ('game','break'))
+    paused_from_phase TEXT CHECK (paused_from_phase IN ('game','break')),
+    -- Auto-generate's memory for this night (see session_templates).
+    recent_partner_rounds INTEGER NOT NULL DEFAULT 4,
+    recent_player_rounds INTEGER NOT NULL DEFAULT 4
 );
 
 CREATE TABLE IF NOT EXISTS session_courts (

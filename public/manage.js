@@ -785,8 +785,10 @@ function playerGender(playerId) {
     return a ? a.gender : null;
 }
 
+// The pool follows the same order as Check-in and the Player Database
+// (first name unless this computer was switched to surname there).
 function byLastName(a, b) {
-    return comparePlayersByName(a, b, 'last');
+    return comparePlayersByName(a, b);
 }
 
 function poolPlayerHtml(p, rested) {

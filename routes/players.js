@@ -38,7 +38,7 @@ router.get('/', (req, res) => {
         sql += ' AND membership_status = ?';
         params.push(membership_status);
     }
-    sql += ' ORDER BY last_name, first_name';
+    sql += ' ORDER BY first_name COLLATE NOCASE, last_name COLLATE NOCASE';
     res.json(store.query(sql, params));
 });
 

@@ -759,6 +759,17 @@ function templateEditHtml(t, idx) {
                     <input type="number" min="0" data-field="default_break_minutes" value="${t.default_break_minutes ?? ''}" placeholder="Use club default">
                 </div>
             </div>
+            <div class="row">
+                <div class="field">
+                    <label>Rounds before the same partner</label>
+                    <input type="number" min="0" max="20" step="1" data-field="default_recent_partner_rounds" value="${t.default_recent_partner_rounds ?? 4}">
+                </div>
+                <div class="field">
+                    <label>Rounds before the same players on court</label>
+                    <input type="number" min="0" max="20" step="1" data-field="default_recent_player_rounds" value="${t.default_recent_player_rounds ?? 4}">
+                </div>
+            </div>
+            <p class="muted" style="font-size:0.78rem; margin: -4px 0 12px;">Auto-generate's memory. The first is how many rounds must pass before two people are partnered again; the second, before they are put on the same court again, with or against each other. People are mixed as far as the numbers allow - a small night can't avoid every repeat. 0 switches a rule off.</p>
             <div class="field">
                 <label>Normal courts</label>
                 <p class="muted" style="font-size:0.78rem; margin: 0 0 6px;">Click to toggle. A court not yet on the Courts page is added there automatically when you save.</p>
@@ -857,6 +868,8 @@ function readTemplateCard(idx) {
         default_max_capacity: capacity === '' ? null : Number(capacity),
         default_game_minutes: gameMinutes === '' ? null : Number(gameMinutes),
         default_break_minutes: breakMinutes === '' ? null : Number(breakMinutes),
+        default_recent_partner_rounds: value('default_recent_partner_rounds') === '' ? 4 : Number(value('default_recent_partner_rounds')),
+        default_recent_player_rounds: value('default_recent_player_rounds') === '' ? 4 : Number(value('default_recent_player_rounds')),
         court_numbers: Array.from(card.querySelectorAll('.tpl-court-cell.active')).map((i) => Number(i.dataset.courtNumber)),
         payment_rates,
     };

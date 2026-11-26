@@ -25,7 +25,7 @@ function gameWithPlayers(gameId) {
                  WHERE gp2.player_id = gp.player_id AND g2.session_id = ? AND g2.round_number <= ?
                    AND g2.status IN ('active','completed')) AS games_played
          FROM game_players gp JOIN players p ON p.id = gp.player_id
-         WHERE gp.game_id = ? ORDER BY gp.side, p.last_name`,
+         WHERE gp.game_id = ? ORDER BY gp.side, p.first_name COLLATE NOCASE, p.last_name COLLATE NOCASE`,
         [game.session_id, game.round_number, gameId]
     );
     // Places on this court that emptied because the player left (only ever
@@ -33,7 +33,7 @@ function gameWithPlayers(gameId) {
     const vacated = store.query(
         `SELECT gv.player_id, gv.side, p.first_name, p.last_name
          FROM game_vacancies gv JOIN players p ON p.id = gv.player_id
-         WHERE gv.game_id = ? ORDER BY gv.side, p.last_name`,
+         WHERE gv.game_id = ? ORDER BY gv.side, p.first_name COLLATE NOCASE, p.last_name COLLATE NOCASE`,
         [gameId]
     );
     // result: who won (null until recorded) - see lib/results.js.

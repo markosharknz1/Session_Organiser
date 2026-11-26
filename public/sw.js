@@ -14,7 +14,7 @@
 // "updating" (real bug hit in testing - see PROGRESS.md). Network-first
 // means the live server's current files always win when it's reachable,
 // and the cache is only ever a last-resort fallback.
-const CACHE_NAME = 'game-scheduler-shell-v5';
+const CACHE_NAME = 'game-scheduler-shell-v6';
 const SHELL_FILES = [
     '/checkin.html', '/manage.html', '/display.html', '/club.html', '/members.html', '/history.html',
     '/style.css', '/events.js', '/pwa.js',

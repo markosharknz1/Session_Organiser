@@ -1057,6 +1057,16 @@ textarea {
 .committee-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 14px; }
 .committee-grid h3 { margin: 0 0 6px; font-size: 0.95rem; }
 #committee-players tr[data-player-id] { cursor: pointer; }
+#lapsed-players tr[data-player-id] { cursor: pointer; }
+
+/* The end-of-night summary box (sessionSummaryModal.js) */
+#session-summary-body { max-height: 62vh; overflow-y: auto; margin-bottom: 14px; padding-right: 4px; }
+#session-summary-body h4 { margin: 14px 0 4px; font-size: 0.95rem; }
+.night-summary-tiles { margin: 4px 0 4px; }
+.night-summary-list { margin: 0; padding-left: 20px; }
+.night-summary-list li { margin: 2px 0; }
+.night-summary-notes { margin: 0; }
+.night-summary-takings { margin-top: 4px; }
 
 .history-game {
     display: flex;

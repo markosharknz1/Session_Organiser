@@ -3,6 +3,8 @@ const store = require('../db/store');
 const { resultFor, playerRecord, outcomeFor } = require('../lib/results');
 const { committeeReport, committeeCsv } = require('../lib/committeeReport');
 
+const { lapsedPlayers, lapsedCsv } = require('../lib/lapsedPlayers');
+const { todayLocalDateStr } = require('../db/index');
 const router = express.Router();
 
 // Read-only audit trail over games/game_players. No writes here at all - the
@@ -40,6 +42,28 @@ router.get('/committee.csv', (req, res) => {
     res.send(`\ufeff${committeeCsv(report)}`);
 });
 
+// Lapsed players (lib/lapsedPlayers.js): regulars who have stopped coming,
+// as of today on the club's own clock. JSON for the History page, and the
+// same as a CSV download.
+function lapsedReport(req) {
+    return lapsedPlayers(store.getDb(), todayLocalDateStr(), {
+        weeks: req.query.weeks,
+        minSessions: req.query.min,
+        withinMonths: req.query.months,
+    });
+}
+
+router.get('/lapsed', (req, res) => {
+    res.json(lapsedReport(req));
+});
+
+router.get('/lapsed.csv', (req, res) => {
+    const report = lapsedReport(req);
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', `attachment; filename="lapsed-players-${report.as_of}.csv"`);
+    res.send(`\ufeff${lapsedCsv(report)}`);
+});
+
 // Full round-by-round breakdown of one session.
 router.get('/sessions/:id', (req, res) => {
     const session = store.queryOne('SELECT * FROM sessions WHERE id = ?', [req.params.id]);
@@ -61,7 +85,7 @@ router.get('/sessions/:id', (req, res) => {
         players: store.query(
             `SELECT gp.player_id, gp.side, gp.skill_level_at_time, p.first_name, p.last_name
              FROM game_players gp JOIN players p ON p.id = gp.player_id
-             WHERE gp.game_id = ? ORDER BY gp.side, p.last_name`,
+             WHERE gp.game_id = ? ORDER BY gp.side, p.first_name COLLATE NOCASE, p.last_name COLLATE NOCASE`,
             [g.id]
         ),
     }));
@@ -93,7 +117,7 @@ router.get('/sessions/:id/games-per-player', (req, res) => {
                  WHERE gp.player_id = p.id AND g.session_id = a.session_id AND g.status IN ('active','completed')) AS games_played
          FROM attendance a JOIN players p ON p.id = a.player_id
          WHERE a.session_id = ? AND a.state IN ('here_today','playing')
-         ORDER BY games_played ASC, p.last_name, p.first_name`,
+         ORDER BY games_played ASC, p.first_name COLLATE NOCASE, p.last_name COLLATE NOCASE`,
         [req.params.id]
     );
     res.json(rows);

@@ -21,7 +21,8 @@
     "backup:test": "node lib/backupRestore.test.js",
     "leaving:test": "node lib/leaving.test.js",
     "results:test": "node lib/results.test.js",
-    "committee:test": "node lib/committeeReport.test.js"
+    "committee:test": "node lib/committeeReport.test.js",
+    "summary:test": "node lib/nightSummary.test.js"
   },
   "dependencies": {
     "exceljs": "4.4.0",

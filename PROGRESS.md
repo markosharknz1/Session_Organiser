@@ -300,22 +300,22 @@ node_modules/           - committed on purpose, not gitignored (see decisions be
 
 ## Explicitly NOT built yet / deferred
 
-- **"Finish session" close-out summary screen** — a basic "Finish session"
-  button now exists (see Follow-on above): it flips `status='closed'` with
-  a confirm prompt, nothing more. The fuller spec (auto-move stragglers to
-  `left`, stop the scheduler, and show a summary screen with peak headcount
-  / rounds played / payment breakdown by category before/after closing) is
-  still not built. Since all of that data already lives in the DB and the
-  session report code (`lib/sessionReport.js`) already computes most of it
-  for History/exports, the summary screen would mostly be wiring, not new
-  logic — a reasonable next step if a club wants an end-of-night recap.
+- ~~"Finish session" close-out summary screen~~ - built 2026-11-26: the
+  "Session finished" box now shows who came (visitors, early leavers,
+  injuries, bookings that never arrived), the play (rounds, games, how
+  evenly games were shared, results entered) and the takings; the same
+  box opens from History for any past night (`lib/nightSummary.js`,
+  `public/sessionSummaryModal.js`). No money-owed list - the club takes
+  payment at the desk and does not run IOUs.
 - **No formal README.md** — this file (`PROGRESS.md`) and `GameScheduler.exe`'s
   own on-screen messages cover most of what a README would, but the spec's
   original ask (Windows firewall prompt on first LAN bind, the
   QR-code-for-TV workflow specifically, and the OneDrive cross-machine sync
   gotchas) was never written up as a standalone polished doc.
 - **Directional skill compatibility** — not built, symmetric only (see above).
-- **Club-editable recent-pairing lookback window** — not built, fixed at 4.
+- ~~Club-editable recent-pairing lookback window~~ - built 2026-11-26: two
+  counters per session template (and per night on the start panel):
+  rounds before the same partner, rounds before the same players on court.
 - **`pairing_rules` session-scoping** — not built (see schema gap above).
 - **Display screen has no special handling for social-mode sessions** — it
   falls back naturally (shows all courts as "free" forever, full waiting

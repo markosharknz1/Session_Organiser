@@ -5,14 +5,17 @@
 // page already fetched (every page's init() loads one for club_name
 // anyway) - no extra request needed.
 // --- Name ordering, shared by every list of players -------------------------
-// Lists sort by surname by default (how a club roster reads), with first
-// name as the tiebreak; the Check-in and Player Database pages offer a
-// "first name" order too, remembered in this browser. Comparison ignores
-// case and stray spaces, so " smith" sorts with "Smith".
-const NAME_SORT_KEY = 'game-scheduler-name-sort';
+// Lists sort by first name by default (names are shown "First Last", and
+// first names are how people at the desk know each other), with surname as
+// the tiebreak; the Check-in and Player Database pages offer a "surname"
+// order too, remembered in this browser, and the Rounds page follows the
+// same choice. Comparison ignores case and stray spaces, so " smith" sorts
+// with "Smith". (The key was renamed when the default changed from
+// surname, so every computer starts on first name once.)
+const NAME_SORT_KEY = 'game-scheduler-name-sort-2';
 
 function nameSortOrder() {
-    try { return localStorage.getItem(NAME_SORT_KEY) === 'first' ? 'first' : 'last'; } catch (e) { return 'last'; }
+    try { return localStorage.getItem(NAME_SORT_KEY) === 'last' ? 'last' : 'first'; } catch (e) { return 'first'; }
 }
 
 function setNameSortOrder(order) {

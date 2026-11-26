@@ -442,6 +442,19 @@ function ensureThreesFormat(db) {
     }
 }
 
+// Auto-generate's memory (see session_templates in schema.sql): how many
+// rounds before the same partner / the same court again. Added here rather
+// than in ensureColumns for the same reason as was_booked below - the
+// sessions rebuild above copies a fixed column list.
+function ensureRecentRounds(db) {
+    const templateCols = all(db, `PRAGMA table_info(session_templates)`).map((c) => c.name);
+    if (!templateCols.includes('default_recent_partner_rounds')) db.run(`ALTER TABLE session_templates ADD COLUMN default_recent_partner_rounds INTEGER NOT NULL DEFAULT 4`);
+    if (!templateCols.includes('default_recent_player_rounds')) db.run(`ALTER TABLE session_templates ADD COLUMN default_recent_player_rounds INTEGER NOT NULL DEFAULT 4`);
+    const sessionCols = all(db, `PRAGMA table_info(sessions)`).map((c) => c.name);
+    if (!sessionCols.includes('recent_partner_rounds')) db.run(`ALTER TABLE sessions ADD COLUMN recent_partner_rounds INTEGER NOT NULL DEFAULT 4`);
+    if (!sessionCols.includes('recent_player_rounds')) db.run(`ALTER TABLE sessions ADD COLUMN recent_player_rounds INTEGER NOT NULL DEFAULT 4`);
+}
+
 // attendance.was_booked (see schema.sql). Added here rather than in
 // ensureColumns because it must run AFTER ensureAttendanceBookedState - that
 // rebuild copies a fixed column list and would drop it on a very old
@@ -672,6 +685,7 @@ function get(db, sql, params = []) {
 }
 
 module.exports = {
+    ensureRecentRounds,
     PUBLIC_DIR, CLUB_ASSETS, CLUB_ICON_ICO, openDbFromBuffer, readBackupManifest,
     DB_PATH, SCHEMA_PATH, BACKUP_DIR, openDb, applySchema, saveDb, all, get,
     ensureBaselineDefaults, ensureColumns, ensureAttendanceBookedState, ensureSessionsPausedPhase, ensureThreesFormat, ensureAttendanceWasBooked, ensureThreesResults, trimPlayerNames, markLegacyAdhocCategoriesSystem, backfillSportsVoucherMethod, zeroVoucherAmounts, closeStaleOpenSessions, backupToDocuments, listBackups,

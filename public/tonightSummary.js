@@ -70,7 +70,7 @@ function tonightSummaryHtml(data, title) {
     // with nothing to click on to confirm it wasn't actually empty.
     const colCount = TONIGHT_METHODS.length + 2;
     const rows = categories.map((c, i) => {
-        const players = (c.players || []).slice().sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
+        const players = (c.players || []).slice().sort((a, b) => a.first_name.localeCompare(b.first_name) || a.last_name.localeCompare(b.last_name));
         const playerItems = players.length
             ? players.map((p) => `<li>${tonightSummaryEsc(p.first_name)} ${tonightSummaryEsc(p.last_name)}${p.method ? ` <span class="muted">(${tonightSummaryEsc(p.method)})</span>` : ''} - $${tonightDollars(p.amount_cents)}</li>`).join('')
             : '<li class="muted">No one recorded.</li>';

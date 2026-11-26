@@ -215,6 +215,17 @@ async function renderChangeForm(template, date) {
                 <input type="number" id="cf-capacity" value="${template.default_max_capacity ?? ''}" min="0">
             </div>
         </div>
+        <div class="row">
+            <div class="field">
+                <label>Rounds before the same partner</label>
+                <input type="number" id="cf-recent-partner" min="0" max="20" step="1" value="${template.default_recent_partner_rounds ?? 4}">
+            </div>
+            <div class="field">
+                <label>Rounds before the same players on court</label>
+                <input type="number" id="cf-recent-player" min="0" max="20" step="1" value="${template.default_recent_player_rounds ?? 4}">
+            </div>
+        </div>
+        <p class="muted" style="font-size:0.78rem; margin: -4px 0 12px;">How long auto-generate keeps people apart tonight: rounds before two people are partnered again, and before they share a court again. 0 switches a rule off.</p>
         <div class="field">
             <label>Courts in use tonight</label>
             <div class="court-checks" id="cf-courts">
@@ -243,6 +254,8 @@ async function renderChangeForm(template, date) {
                         mode: $('#cf-mode').value,
                         format: $('#cf-format').value,
                         scoring: $('#cf-scoring') ? $('#cf-scoring').value : undefined,
+                        recent_partner_rounds: $('#cf-recent-partner').value === '' ? undefined : Number($('#cf-recent-partner').value),
+                        recent_player_rounds: $('#cf-recent-player').value === '' ? undefined : Number($('#cf-recent-player').value),
                         max_capacity: capacityVal === '' ? null : Number(capacityVal),
                         court_ids,
                     },
@@ -276,6 +289,17 @@ async function renderAdhocForm(date) {
                 <select id="ah-scoring">${scoringOptionsHtml('', clubScoring)}</select>
             </div>` : ''}
         </div>
+        <div class="row">
+            <div class="field">
+                <label>Rounds before the same partner</label>
+                <input type="number" id="ah-recent-partner" min="0" max="20" step="1" value="4">
+            </div>
+            <div class="field">
+                <label>Rounds before the same players on court</label>
+                <input type="number" id="ah-recent-player" min="0" max="20" step="1" value="4">
+            </div>
+        </div>
+        <p class="muted" style="font-size:0.78rem; margin: -4px 0 12px;">How long auto-generate keeps people apart: rounds before two people are partnered again, and before they share a court again. 0 switches a rule off.</p>
         <div class="field">
             <label>Courts in use</label>
             <div class="court-checks" id="ah-courts">
@@ -296,6 +320,8 @@ async function renderAdhocForm(date) {
                     mode: $('#ah-mode').value,
                     format: $('#ah-format').value,
                     scoring: $('#ah-scoring') ? $('#ah-scoring').value : undefined,
+                    recent_partner_rounds: $('#ah-recent-partner').value === '' ? undefined : Number($('#ah-recent-partner').value),
+                    recent_player_rounds: $('#ah-recent-player').value === '' ? undefined : Number($('#ah-recent-player').value),
                     court_ids,
                     notes: startNote(),
                     record_results: startRecordResults(),

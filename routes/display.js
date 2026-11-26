@@ -74,7 +74,7 @@ router.get('/sessions/:id/display', (req, res) => {
         players: store.query(
             `SELECT gp.player_id, gp.side, gp.skill_level_at_time, p.first_name, p.last_name
              FROM game_players gp JOIN players p ON p.id = gp.player_id
-             WHERE gp.game_id = ? ORDER BY gp.side, p.last_name`,
+             WHERE gp.game_id = ? ORDER BY gp.side, p.first_name COLLATE NOCASE, p.last_name COLLATE NOCASE`,
             [g.id]
         ),
     }));
@@ -95,7 +95,7 @@ router.get('/sessions/:id/display', (req, res) => {
             players: store.query(
                 `SELECT gp.player_id, gp.side, gp.skill_level_at_time, p.first_name, p.last_name
                  FROM game_players gp JOIN players p ON p.id = gp.player_id
-                 WHERE gp.game_id = ? ORDER BY gp.side, p.last_name`,
+                 WHERE gp.game_id = ? ORDER BY gp.side, p.first_name COLLATE NOCASE, p.last_name COLLATE NOCASE`,
                 [g.id]
             ),
         }));
@@ -111,7 +111,7 @@ router.get('/sessions/:id/display', (req, res) => {
         `SELECT a.player_id, p.first_name, p.last_name, p.skill_level
          FROM attendance a JOIN players p ON p.id = a.player_id
          WHERE a.session_id = ? AND a.state = 'here_today'
-         ORDER BY p.last_name, p.first_name`,
+         ORDER BY p.first_name COLLATE NOCASE, p.last_name COLLATE NOCASE`,
         [sessionId]
     ).filter((w) => !assignedNextRoundIds.has(w.player_id));
     const counts = sitOutCounts(sessionId, waiting.map((w) => w.player_id));

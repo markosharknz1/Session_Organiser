@@ -4,6 +4,7 @@ const { broadcast } = require('../lib/eventBus');
 const { paymentBreakdown, uniquePlayerCount, attendanceCounts } = require('../lib/sessionReport');
 const { sendEmail, parseRecipientList } = require('../lib/sendEmail');
 const { buildSessionSummaryEmail } = require('../lib/sessionSummaryEmail');
+const { nightSummary } = require('../lib/nightSummary');
 
 const router = express.Router();
 
@@ -11,6 +12,7 @@ const STATUSES = ['open', 'closed'];
 const MODES = ['auto', 'manual', 'social'];
 const FORMATS = ['doubles', 'singles', 'threes']; // 4 a court, 2 a court, or 3 on a court with no sides (e.g. squash)
 const { SCORING_PRESETS, DEFAULT_SCORING } = require('../public/scoring');
+const { cleanLookback } = require('../lib/autoGenerate');
 const scoringKey = (v, fallback = DEFAULT_SCORING) => (SCORING_PRESETS[v] ? v : fallback);
 
 // The club's sport - what a template (or a one-off night) scores by unless
@@ -69,6 +71,14 @@ router.get('/latest', (req, res) => {
     const open = store.queryOne(`SELECT * FROM sessions WHERE status = 'open' LIMIT 1`);
     if (!open) return res.status(404).json({ error: 'No open session' });
     res.json(open);
+});
+
+// The end-of-night summary (lib/nightSummary.js): who came, how the play
+// went, the takings. Shown when a session is finished and from History.
+router.get('/:id/summary', (req, res) => {
+    const summary = nightSummary(store.getDb(), req.params.id);
+    if (!summary) return res.status(404).json({ error: 'Session not found' });
+    res.json(summary);
 });
 
 // Cash-up totals for one session - shown right after "Finish session" and
@@ -135,6 +145,10 @@ router.post('/start', (req, res) => {
     // (see lib/roundLifecycle.js) if the template doesn't set one either.
     const game_minutes = o.game_minutes !== undefined ? o.game_minutes : template.default_game_minutes;
     const break_minutes = o.break_minutes !== undefined ? o.break_minutes : template.default_break_minutes;
+    // Auto-generate's memory for the night: the template's, unless the
+    // start panel changed it.
+    const recentPartnerRounds = cleanLookback(o.recent_partner_rounds, cleanLookback(template.default_recent_partner_rounds));
+    const recentPlayerRounds = cleanLookback(o.recent_player_rounds, cleanLookback(template.default_recent_player_rounds));
 
     // court_ids override replaces the template's normal set for this session only;
     // the template's own session_template_courts rows are never touched.
@@ -162,10 +176,10 @@ router.post('/start', (req, res) => {
 
     try {
         const sessionId = store.insert(
-            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, scoring, game_minutes, break_minutes, max_capacity, current_phase, notes, record_results)
-             VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, 'idle', ?, ?)`,
+            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, scoring, game_minutes, break_minutes, max_capacity, current_phase, notes, record_results, recent_partner_rounds, recent_player_rounds)
+             VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, 'idle', ?, ?, ?, ?)`,
             [template_id, date, template.label, template.start_time, template.end_time, o.location ?? null,
-                mode, format, scoring, game_minutes, break_minutes, max_capacity, notes, recordResults]
+                mode, format, scoring, game_minutes, break_minutes, max_capacity, notes, recordResults, recentPartnerRounds, recentPlayerRounds]
         );
         for (const courtId of courtIds) {
             store.run('INSERT INTO session_courts (session_id, court_id, in_use) VALUES (?, ?, 1)', [sessionId, courtId]);
@@ -211,12 +225,12 @@ router.post('/', (req, res) => {
     }
     try {
         const id = store.insert(
-            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, scoring, game_minutes, break_minutes, max_capacity, current_phase, notes, record_results)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO sessions (template_id, date, label, scheduled_start_time, scheduled_end_time, location, status, mode, format, scoring, game_minutes, break_minutes, max_capacity, current_phase, notes, record_results, recent_partner_rounds, recent_player_rounds)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [b.template_id ?? null, b.date, b.label ?? null, b.scheduled_start_time ?? null, b.scheduled_end_time ?? null,
                 b.location ?? null, b.status ?? 'open', b.mode, format, scoringKey(b.scoring, clubScoring()), b.game_minutes ?? null, b.break_minutes ?? null,
                 b.max_capacity ?? null, b.current_phase ?? 'idle', String(b.notes ?? '').trim() || null,
-                nightRecordsResults(b.record_results)]
+                nightRecordsResults(b.record_results), cleanLookback(b.recent_partner_rounds), cleanLookback(b.recent_player_rounds)]
         );
         if (Array.isArray(b.court_ids)) {
             for (const courtId of b.court_ids) {
@@ -279,11 +293,12 @@ router.put('/:id', (req, res) => {
     }
     try {
         store.run(
-            `UPDATE sessions SET template_id=?, date=?, label=?, scheduled_start_time=?, scheduled_end_time=?, location=?, status=?, mode=?, format=?, scoring=?, game_minutes=?, break_minutes=?, max_capacity=?, current_phase=?, phase_started_at=?, phase_ends_at=?, notes=?, record_results=?
+            `UPDATE sessions SET template_id=?, date=?, label=?, scheduled_start_time=?, scheduled_end_time=?, location=?, status=?, mode=?, format=?, scoring=?, game_minutes=?, break_minutes=?, max_capacity=?, current_phase=?, phase_started_at=?, phase_ends_at=?, notes=?, record_results=?, recent_partner_rounds=?, recent_player_rounds=?
              WHERE id=?`,
             [merged.template_id, merged.date, merged.label, merged.scheduled_start_time, merged.scheduled_end_time,
                 merged.location, merged.status, merged.mode, merged.format ?? 'doubles', scoringKey(merged.scoring), merged.game_minutes, merged.break_minutes, merged.max_capacity,
-                merged.current_phase, merged.phase_started_at, merged.phase_ends_at, merged.notes ?? null, merged.record_results ? 1 : 0, req.params.id]
+                merged.current_phase, merged.phase_started_at, merged.phase_ends_at, merged.notes ?? null, merged.record_results ? 1 : 0,
+                cleanLookback(merged.recent_partner_rounds), cleanLookback(merged.recent_player_rounds), req.params.id]
         );
         store.persist();
         broadcast('session', { session_id: Number(req.params.id) });
